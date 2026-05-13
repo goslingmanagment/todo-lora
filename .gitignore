@@ -11,6 +11,9 @@ test-results
 .playwright-mcp
 .layout-screenshots
 audit
+docs/backport-gpt-to-claude/
+public/new-task-demos.html
+public/layout-switcher-demos.html
 /*.png
 PROMPT*.md
 .env

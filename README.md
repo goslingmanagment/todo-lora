@@ -15,7 +15,7 @@ Internal task tracker for the Лора content/custom workflow.
   in Postgres in a Better-Auth-compatible table shape (`id` / `token` /
   `user_id` / `expires_at`) so we can swap Better-Auth in later if/when the
   team needs additional auth methods. We do not depend on the `better-auth`
-  package today — see `IMPLEMENTATION_REPORT.md` §2.1.
+  package today.
 - Postgres `LISTEN/NOTIFY` + SSE for realtime
 - Tailwind CSS 4 + `next/font` (Fraunces + Inter) with custom design tokens
   (Anthropic/Claude aesthetic)
