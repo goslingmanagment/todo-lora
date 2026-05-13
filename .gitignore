@@ -12,6 +12,7 @@ test-results
 .layout-screenshots
 audit
 /*.png
+PROMPT*.md
 .env
 .env.*
 !.env.example
