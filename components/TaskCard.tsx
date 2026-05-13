@@ -1,11 +1,8 @@
 import Link from 'next/link';
 import type { Task } from '@/drizzle/schema';
+import { formatCustomContentMetric } from '@/lib/format/customContent';
 import { formatMoneyDisplay } from '@/lib/format/money';
-import {
-  AGREEMENT_LABELS_RU,
-  STATUS_LABELS_RU,
-  TYPE_LABELS_RU,
-} from '@/lib/fsm/taskStatus';
+import { AGREEMENT_LABELS_RU, STATUS_LABELS_RU, TYPE_LABELS_RU } from '@/lib/fsm/taskStatus';
 import { PriorityDot } from './PriorityDot';
 import { DeadlineChip } from './DeadlineChip';
 
@@ -42,10 +39,7 @@ export function TaskCard({
 
   return (
     <Link href={`/task/${task.id}`} className="task-card-link" prefetch={true}>
-      <article
-        className={cardClass}
-        aria-label={task.title}
-      >
+      <article className={cardClass} aria-label={task.title}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.7rem' }}>
           <span style={{ paddingTop: dotPad }}>
             <PriorityDot priority={task.priority} />
@@ -79,11 +73,7 @@ export function TaskCard({
               <DeadlineChip deadline={task.deadlineOn} todayIso={todayIso} />
             </div>
 
-            {isCustom ? (
-              <CustomMeta task={task} money={money} />
-            ) : (
-              <NonCustomMeta task={task} />
-            )}
+            {isCustom ? <CustomMeta task={task} money={money} /> : <NonCustomMeta task={task} />}
 
             {task.description && !compact ? (
               <p
@@ -111,8 +101,8 @@ function CustomMeta({ task, money }: { task: Task; money: string | null }) {
   // with no new information — the status chip already reads as the happy path.
   // We only keep the agreement chip when it carries an action the operator
   // still needs to take (pending or rejected).
-  const showAgreement =
-    task.agreementState != null && task.agreementState !== 'confirmed';
+  const showAgreement = task.agreementState != null && task.agreementState !== 'confirmed';
+  const contentMetric = formatCustomContentMetric(task);
 
   return (
     <div
@@ -130,12 +120,15 @@ function CustomMeta({ task, money }: { task: Task; money: string | null }) {
           {money}
         </span>
       ) : null}
-      {buyerLabel ? (
-        <span className="muted">{buyerLabel}</span>
-      ) : null}
+      {buyerLabel ? <span className="muted">{buyerLabel}</span> : null}
       {task.platform ? (
         <span className="muted-2" style={{ fontSize: '0.78rem' }}>
           · {task.platform}
+        </span>
+      ) : null}
+      {contentMetric ? (
+        <span className="muted-2" style={{ fontSize: '0.78rem' }}>
+          · {contentMetric}
         </span>
       ) : null}
       {showAgreement ? (
@@ -143,9 +136,7 @@ function CustomMeta({ task, money }: { task: Task; money: string | null }) {
           {AGREEMENT_LABELS_RU[task.agreementState!]}
         </span>
       ) : null}
-      <span className={statusChipClass(task.status)}>
-        {STATUS_LABELS_RU[task.status]}
-      </span>
+      <span className={statusChipClass(task.status)}>{STATUS_LABELS_RU[task.status]}</span>
     </div>
   );
 }
@@ -163,9 +154,7 @@ function NonCustomMeta({ task }: { task: Task }) {
       }}
     >
       <span className="muted-2">{TYPE_LABELS_RU[task.type]}</span>
-      <span className={statusChipClass(task.status)}>
-        {STATUS_LABELS_RU[task.status]}
-      </span>
+      <span className={statusChipClass(task.status)}>{STATUS_LABELS_RU[task.status]}</span>
     </div>
   );
 }

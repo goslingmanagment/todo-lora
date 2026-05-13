@@ -4,8 +4,8 @@ import { useState } from 'react';
 import type { useTransition } from 'react';
 import { updateTaskAction } from '@/lib/server/actions';
 import { showToast } from '@/components/Toaster';
-import type { PaymentModel, TaskPriority } from '@/drizzle/schema/enums';
-import { parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
+import type { CustomContentKind, PaymentModel, TaskPriority } from '@/drizzle/schema/enums';
+import { parseCountInput, parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
 import { FieldError } from './_primitives';
 import type { TaskDto, Topic, UserOption } from './_types';
 
@@ -40,6 +40,10 @@ export function EditPanel({
   const [buyerHandle, setBuyerHandle] = useState(task.buyerHandle ?? '');
   const [buyerDisplayName, setBuyerDisplayName] = useState(task.buyerDisplayName ?? '');
   const [platform, setPlatform] = useState(task.platform ?? '');
+  const [contentKind, setContentKind] = useState<CustomContentKind>(
+    task.contentKind ??
+      (task.photoCountMin != null || task.photoCountMax != null ? 'photo' : 'video'),
+  );
   const [paymentModel, setPaymentModel] = useState<PaymentModel>(task.paymentModel ?? 'full');
   const [amountDollars, setAmountDollars] = useState(
     task.amountCents != null ? String(Math.round(task.amountCents / 100)) : '',
@@ -52,6 +56,12 @@ export function EditPanel({
   );
   const [durationMax, setDurationMax] = useState(
     task.durationMaxSeconds != null ? String(Math.round(task.durationMaxSeconds / 60)) : '',
+  );
+  const [photoCountMin, setPhotoCountMin] = useState(
+    task.photoCountMin != null ? String(task.photoCountMin) : '',
+  );
+  const [photoCountMax, setPhotoCountMax] = useState(
+    task.photoCountMax != null ? String(task.photoCountMax) : '',
   );
 
   const [requesterId, setRequesterId] = useState(task.requesterId ?? '');
@@ -73,27 +83,52 @@ export function EditPanel({
     if (task.type === 'custom') {
       const amount = parseDollarInput(amountDollars);
       const collected = parseDollarInput(amountCollectedDollars);
-      const min = parseMinuteInput(durationMin);
-      const max = parseMinuteInput(durationMax);
       const localErrors: Record<string, string> = {};
       if (!amount.ok) localErrors.amountDollars = amount.error;
       if (!collected.ok) localErrors.amountCollectedDollars = collected.error;
-      if (!min.ok) localErrors.durationMinMinutes = min.error;
-      if (!max.ok) localErrors.durationMaxMinutes = max.error;
+
+      let durationMinValue: number | null = null;
+      let durationMaxValue: number | null = null;
+      let photoCountMinValue: number | null = null;
+      let photoCountMaxValue: number | null = null;
+
+      if (contentKind === 'video') {
+        const min = parseMinuteInput(durationMin);
+        const max = parseMinuteInput(durationMax);
+        if (!min.ok) localErrors.durationMinMinutes = min.error;
+        if (!max.ok) localErrors.durationMaxMinutes = max.error;
+        if (min.ok) durationMinValue = min.value;
+        if (max.ok) durationMaxValue = max.value;
+      } else {
+        const min = parseCountInput(photoCountMin);
+        const max = parseCountInput(photoCountMax);
+        if (!min.ok) {
+          localErrors.photoCountMin = min.error;
+        } else if (min.value == null) {
+          localErrors.photoCountMin = 'Укажите количество фото';
+        }
+        if (!max.ok) localErrors.photoCountMax = max.error;
+        if (min.ok && min.value != null) photoCountMinValue = min.value;
+        if (max.ok) photoCountMaxValue = max.value ?? photoCountMinValue;
+      }
+
       if (Object.keys(localErrors).length > 0) {
         setErrors(localErrors);
         return;
       }
-      if (!amount.ok || !collected.ok || !min.ok || !max.ok) return;
+      if (!amount.ok || !collected.ok) return;
       Object.assign(patch, {
         buyerHandle: buyerHandle.trim(),
         buyerDisplayName: buyerDisplayName.trim() || null,
         platform: platform.trim(),
+        contentKind,
         paymentModel,
         amountDollars: amount.value,
         amountCollectedDollars: collected.value,
-        durationMinMinutes: min.value,
-        durationMaxMinutes: max.value,
+        durationMinMinutes: durationMinValue,
+        durationMaxMinutes: durationMaxValue,
+        photoCountMin: photoCountMinValue,
+        photoCountMax: photoCountMaxValue,
       });
     }
     if (task.type === 'content_task') {
@@ -121,11 +156,7 @@ export function EditPanel({
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="panel"
-      style={{ display: 'grid', gap: '0.95rem' }}
-    >
+    <form onSubmit={onSubmit} className="panel" style={{ display: 'grid', gap: '0.95rem' }}>
       <h2 className="eyebrow" style={{ margin: 0 }}>
         Редактировать
       </h2>
@@ -205,7 +236,9 @@ export function EditPanel({
         <>
           <div className="form-grid-2" style={{ gap: '0.85rem' }}>
             <div>
-              <label htmlFor="ed-buyer" className="label">Покупатель</label>
+              <label htmlFor="ed-buyer" className="label">
+                Покупатель
+              </label>
               <input
                 id="ed-buyer"
                 className="input"
@@ -217,7 +250,9 @@ export function EditPanel({
               <FieldError id="ed-buyer-error" error={errors.buyerHandle} />
             </div>
             <div>
-              <label htmlFor="ed-buyerName" className="label">Имя покупателя</label>
+              <label htmlFor="ed-buyerName" className="label">
+                Имя покупателя
+              </label>
               <input
                 id="ed-buyerName"
                 className="input"
@@ -228,7 +263,9 @@ export function EditPanel({
           </div>
           <div className="form-grid-2" style={{ gap: '0.85rem' }}>
             <div>
-              <label htmlFor="ed-platform" className="label">Платформа</label>
+              <label htmlFor="ed-platform" className="label">
+                Платформа
+              </label>
               <input
                 id="ed-platform"
                 className="input"
@@ -240,7 +277,9 @@ export function EditPanel({
               <FieldError id="ed-platform-error" error={errors.platform} />
             </div>
             <div>
-              <label htmlFor="ed-payment" className="label">Модель</label>
+              <label htmlFor="ed-payment" className="label">
+                Модель
+              </label>
               <select
                 id="ed-payment"
                 className="select"
@@ -254,13 +293,14 @@ export function EditPanel({
           </div>
           <div className="form-grid-2" style={{ gap: '0.85rem' }}>
             <div>
-              <label htmlFor="ed-amount" className="label">Сумма, $</label>
+              <label htmlFor="ed-amount" className="label">
+                Сумма, $
+              </label>
               <input
                 id="ed-amount"
                 className="input tabular"
-                type="number"
-                min={0}
-                step={1}
+                type="text"
+                inputMode="numeric"
                 aria-invalid={errors.amountDollars ? 'true' : undefined}
                 aria-describedby={errors.amountDollars ? 'ed-amount-error' : undefined}
                 value={amountDollars}
@@ -269,13 +309,14 @@ export function EditPanel({
               <FieldError id="ed-amount-error" error={errors.amountDollars} />
             </div>
             <div>
-              <label htmlFor="ed-collected" className="label">Получено, $</label>
+              <label htmlFor="ed-collected" className="label">
+                Получено, $
+              </label>
               <input
                 id="ed-collected"
                 className="input tabular"
-                type="number"
-                min={0}
-                step={1}
+                type="text"
+                inputMode="numeric"
                 aria-invalid={errors.amountCollectedDollars ? 'true' : undefined}
                 aria-describedby={errors.amountCollectedDollars ? 'ed-collected-error' : undefined}
                 value={amountCollectedDollars}
@@ -286,41 +327,101 @@ export function EditPanel({
           </div>
           <div className="form-grid-2" style={{ gap: '0.85rem' }}>
             <div>
-              <label htmlFor="ed-min" className="label">Длительность min, мин</label>
-              <input
-                id="ed-min"
-                className="input tabular"
-                type="number"
-                min={0}
-                aria-invalid={errors.durationMinMinutes ? 'true' : undefined}
-                aria-describedby={errors.durationMinMinutes ? 'ed-min-error' : undefined}
-                value={durationMin}
-                onChange={(e) => setDurationMin(e.target.value)}
-              />
-              <FieldError id="ed-min-error" error={errors.durationMinMinutes} />
-            </div>
-            <div>
-              <label htmlFor="ed-max" className="label">Длительность max, мин</label>
-              <input
-                id="ed-max"
-                className="input tabular"
-                type="number"
-                min={0}
-                aria-invalid={errors.durationMaxMinutes ? 'true' : undefined}
-                aria-describedby={errors.durationMaxMinutes ? 'ed-max-error' : undefined}
-                value={durationMax}
-                onChange={(e) => setDurationMax(e.target.value)}
-              />
-              <FieldError id="ed-max-error" error={errors.durationMaxMinutes} />
+              <label htmlFor="ed-content-kind" className="label">
+                Формат
+              </label>
+              <select
+                id="ed-content-kind"
+                className="select"
+                value={contentKind}
+                onChange={(e) => setContentKind(e.target.value as CustomContentKind)}
+              >
+                <option value="video">Видео</option>
+                <option value="photo">Фото</option>
+              </select>
             </div>
           </div>
+          {contentKind === 'video' ? (
+            <div className="form-grid-2" style={{ gap: '0.85rem' }}>
+              <div>
+                <label htmlFor="ed-min" className="label">
+                  Длительность min, мин
+                </label>
+                <input
+                  id="ed-min"
+                  className="input tabular"
+                  type="text"
+                  inputMode="numeric"
+                  aria-invalid={errors.durationMinMinutes ? 'true' : undefined}
+                  aria-describedby={errors.durationMinMinutes ? 'ed-min-error' : undefined}
+                  value={durationMin}
+                  onChange={(e) => setDurationMin(e.target.value)}
+                />
+                <FieldError id="ed-min-error" error={errors.durationMinMinutes} />
+              </div>
+              <div>
+                <label htmlFor="ed-max" className="label">
+                  Длительность max, мин
+                </label>
+                <input
+                  id="ed-max"
+                  className="input tabular"
+                  type="text"
+                  inputMode="numeric"
+                  aria-invalid={errors.durationMaxMinutes ? 'true' : undefined}
+                  aria-describedby={errors.durationMaxMinutes ? 'ed-max-error' : undefined}
+                  value={durationMax}
+                  onChange={(e) => setDurationMax(e.target.value)}
+                />
+                <FieldError id="ed-max-error" error={errors.durationMaxMinutes} />
+              </div>
+            </div>
+          ) : (
+            <div className="form-grid-2" style={{ gap: '0.85rem' }}>
+              <div>
+                <label htmlFor="ed-photo-min" className="label">
+                  Фото min
+                </label>
+                <input
+                  id="ed-photo-min"
+                  className="input tabular"
+                  type="text"
+                  inputMode="numeric"
+                  aria-invalid={errors.photoCountMin ? 'true' : undefined}
+                  aria-describedby={errors.photoCountMin ? 'ed-photo-min-error' : undefined}
+                  value={photoCountMin}
+                  onChange={(e) => setPhotoCountMin(e.target.value)}
+                />
+                <FieldError id="ed-photo-min-error" error={errors.photoCountMin} />
+              </div>
+              <div>
+                <label htmlFor="ed-photo-max" className="label">
+                  Фото max
+                </label>
+                <input
+                  id="ed-photo-max"
+                  className="input tabular"
+                  type="text"
+                  inputMode="numeric"
+                  aria-invalid={errors.photoCountMax ? 'true' : undefined}
+                  aria-describedby={errors.photoCountMax ? 'ed-photo-max-error' : undefined}
+                  value={photoCountMax}
+                  onChange={(e) => setPhotoCountMax(e.target.value)}
+                  placeholder="если пусто, равно min"
+                />
+                <FieldError id="ed-photo-max-error" error={errors.photoCountMax} />
+              </div>
+            </div>
+          )}
         </>
       ) : null}
 
       {task.type === 'content_task' ? (
         <div className="form-grid-2" style={{ gap: '0.85rem' }}>
           <div>
-            <label htmlFor="ed-req" className="label">Заказчик</label>
+            <label htmlFor="ed-req" className="label">
+              Заказчик
+            </label>
             <select
               id="ed-req"
               className="select"
@@ -339,7 +440,9 @@ export function EditPanel({
             <FieldError id="ed-req-error" error={errors.requesterId} />
           </div>
           <div>
-            <label htmlFor="ed-asg" className="label">Исполнитель</label>
+            <label htmlFor="ed-asg" className="label">
+              Исполнитель
+            </label>
             <select
               id="ed-asg"
               className="select"
@@ -358,7 +461,9 @@ export function EditPanel({
       ) : null}
 
       <div>
-        <label htmlFor="ed-desc" className="label">Описание</label>
+        <label htmlFor="ed-desc" className="label">
+          Описание
+        </label>
         <textarea
           id="ed-desc"
           className="textarea"

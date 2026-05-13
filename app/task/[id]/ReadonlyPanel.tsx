@@ -2,6 +2,11 @@
 
 import { Fact, LinkifiedText } from './_primitives';
 import { formatDateRu } from '@/lib/format/dates';
+import {
+  customContentKindLabel,
+  formatCustomContentMetric,
+  resolvedCustomContentKind,
+} from '@/lib/format/customContent';
 import type { TaskDto, Topic, UserOption } from './_types';
 
 export function ReadonlyPanel({
@@ -51,23 +56,9 @@ export function ReadonlyPanel({
   );
 }
 
-export function CustomFactsPanel({
-  task,
-  moneyText,
-}: {
-  task: TaskDto;
-  moneyText: string | null;
-}) {
-  const min =
-    task.durationMinSeconds != null ? Math.round(task.durationMinSeconds / 60) : null;
-  const max =
-    task.durationMaxSeconds != null ? Math.round(task.durationMaxSeconds / 60) : null;
-  const duration =
-    min != null && max != null
-      ? min === max ? `${min} мин` : `${min}–${max} мин`
-      : min != null ? `${min} мин`
-      : max != null ? `${max} мин`
-      : null;
+export function CustomFactsPanel({ task, moneyText }: { task: TaskDto; moneyText: string | null }) {
+  const contentKind = resolvedCustomContentKind(task);
+  const contentMetric = formatCustomContentMetric(task);
   const buyerLabel = task.buyerHandle
     ? task.buyerDisplayName
       ? `${task.buyerDisplayName} · ${task.buyerHandle}`
@@ -90,10 +81,19 @@ export function CustomFactsPanel({
           margin: 0,
         }}
       >
-        {moneyText ? <Fact label="Сумма" tabular>{moneyText}</Fact> : null}
+        {moneyText ? (
+          <Fact label="Сумма" tabular>
+            {moneyText}
+          </Fact>
+        ) : null}
+        <Fact label="Формат">{customContentKindLabel(contentKind)}</Fact>
         {task.platform ? <Fact label="Платформа">{task.platform}</Fact> : null}
         {buyerLabel ? <Fact label="Покупатель">{buyerLabel}</Fact> : null}
-        {duration ? <Fact label="Длительность" tabular>{duration}</Fact> : null}
+        {contentMetric ? (
+          <Fact label={contentKind === 'photo' ? 'Количество' : 'Длительность'} tabular>
+            {contentMetric}
+          </Fact>
+        ) : null}
       </dl>
     </section>
   );

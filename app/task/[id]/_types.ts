@@ -5,6 +5,7 @@
  */
 import type {
   AgreementState,
+  CustomContentKind,
   PaymentModel,
   TaskPriority,
   TaskStatus,
@@ -23,11 +24,14 @@ export type TaskDto = {
   buyerHandle: string | null;
   buyerDisplayName: string | null;
   platform: string | null;
+  contentKind: CustomContentKind | null;
   paymentModel: PaymentModel | null;
   amountCents: number | null;
   amountCollectedCents: number | null;
   durationMinSeconds: number | null;
   durationMaxSeconds: number | null;
+  photoCountMin: number | null;
+  photoCountMax: number | null;
   agreementState: AgreementState | null;
   requesterId: string | null;
   assigneeId: string | null;
