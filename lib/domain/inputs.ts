@@ -1,6 +1,4 @@
-export type IntegerInputResult =
-  | { ok: true; value: number | null }
-  | { ok: false; error: string };
+export type IntegerInputResult = { ok: true; value: number | null } | { ok: false; error: string };
 
 export const INTEGER_INPUT_ERROR = 'Должно быть целым числом';
 export const INTEGER_RANGE_ERROR = 'Слишком большое число';
@@ -12,6 +10,10 @@ export function parseDollarInput(value: unknown): IntegerInputResult {
 }
 
 export function parseMinuteInput(value: unknown): IntegerInputResult {
+  return parseIntegerInput(value, { allowDollarPrefix: false });
+}
+
+export function parseCountInput(value: unknown): IntegerInputResult {
   return parseIntegerInput(value, { allowDollarPrefix: false });
 }
 
@@ -40,8 +42,14 @@ function parseIntegerInput(
   if (typeof value !== 'string') return { ok: false, error: INTEGER_INPUT_ERROR };
   let normalized = value.trim();
   if (normalized.length === 0) return { ok: true, value: null };
-  if (options.allowDollarPrefix && normalized.startsWith('$')) {
-    normalized = normalized.slice(1).trim();
+  if (options.allowDollarPrefix) {
+    const prefixed = normalized.match(/^\$\s*(-?\d+)$/);
+    const suffixed = normalized.match(/^(-?\d+)\s*\$$/);
+    if (prefixed) {
+      normalized = prefixed[1]!;
+    } else if (suffixed) {
+      normalized = suffixed[1]!;
+    }
   }
   if (!INTEGER_RE.test(normalized)) return { ok: false, error: INTEGER_INPUT_ERROR };
 

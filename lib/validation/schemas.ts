@@ -2,11 +2,9 @@
  * Shared validation schemas. Keep error messages in Russian and short.
  */
 import { z } from 'zod';
-import { parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
+import { parseCountInput, parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
 
-const isoDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Неверный формат даты' });
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Неверный формат даты' });
 
 const nonEmptyShort = z
   .string()
@@ -25,6 +23,7 @@ const optionalText = z
 const priority = z.enum(['low', 'medium', 'high']);
 const taskStatus = z.enum(['draft', 'in_progress', 'done', 'delivered', 'cancelled']);
 const paymentModel = z.enum(['full', 'unlock']);
+const customContentKind = z.enum(['video', 'photo']);
 const agreementState = z.enum(['pending', 'confirmed', 'rejected']);
 const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const stagingKeyPattern = new RegExp(
@@ -32,9 +31,7 @@ const stagingKeyPattern = new RegExp(
   'i',
 );
 
-function integerField(
-  parser: (value: unknown) => ReturnType<typeof parseDollarInput>,
-) {
+function integerField(parser: (value: unknown) => ReturnType<typeof parseDollarInput>) {
   return z.union([z.number(), z.string()]).transform((v, ctx) => {
     const parsed = parser(v);
     if (!parsed.ok) {
@@ -47,6 +44,7 @@ function integerField(
 
 const integerDollars = integerField(parseDollarInput);
 const integerMinutes = integerField(parseMinuteInput);
+const integerCount = integerField(parseCountInput);
 
 export const createCustomSchema = z
   .object({
@@ -59,6 +57,7 @@ export const createCustomSchema = z
     buyerHandle: nonEmptyShort,
     buyerDisplayName: optionalText,
     platform: nonEmptyShort,
+    contentKind: customContentKind.default('video'),
     paymentModel: paymentModel,
     amountDollars: integerDollars.refine((v): v is number => v != null && v > 0, {
       message: 'Сумма должна быть больше 0',
@@ -66,6 +65,8 @@ export const createCustomSchema = z
     amountCollectedDollars: integerDollars.optional().nullable(),
     durationMinMinutes: integerMinutes.optional().nullable(),
     durationMaxMinutes: integerMinutes.optional().nullable(),
+    photoCountMin: integerCount.optional().nullable(),
+    photoCountMax: integerCount.optional().nullable(),
     agreementState: agreementState.optional().nullable(),
   })
   .superRefine((data, ctx) => {
@@ -84,21 +85,76 @@ export const createCustomSchema = z
         message: 'Получено больше суммы',
       });
     }
-    const min = data.durationMinMinutes;
-    const max = data.durationMaxMinutes;
-    if (min != null && max != null && min > max) {
+    const durationMin = data.durationMinMinutes;
+    const durationMax = data.durationMaxMinutes;
+    if (durationMin != null && durationMax != null && durationMin > durationMax) {
       ctx.addIssue({
         code: 'custom',
         path: ['durationMaxMinutes'],
         message: 'Максимум должен быть ≥ минимума',
       });
     }
-    if (min != null && min < 0) {
+    if (durationMin != null && durationMin < 0) {
       ctx.addIssue({
         code: 'custom',
         path: ['durationMinMinutes'],
         message: 'Не может быть отрицательной',
       });
+    }
+    if (durationMax != null && durationMax < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['durationMaxMinutes'],
+        message: 'Не может быть отрицательной',
+      });
+    }
+
+    const photoMin = data.photoCountMin;
+    const photoMax = data.photoCountMax;
+    if (data.contentKind === 'video') {
+      if (photoMin != null || photoMax != null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['photoCountMin'],
+          message: 'Для видео укажите длительность',
+        });
+      }
+    } else {
+      if (durationMin != null || durationMax != null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['durationMinMinutes'],
+          message: 'Для фото укажите количество фото',
+        });
+      }
+      if (photoMin == null || photoMax == null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['photoCountMin'],
+          message: 'Укажите количество фото',
+        });
+      }
+      if (photoMin != null && photoMin <= 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['photoCountMin'],
+          message: 'Должно быть больше 0',
+        });
+      }
+      if (photoMax != null && photoMax <= 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['photoCountMax'],
+          message: 'Должно быть больше 0',
+        });
+      }
+      if (photoMin != null && photoMax != null && photoMin > photoMax) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['photoCountMax'],
+          message: 'Максимум должен быть ≥ минимума',
+        });
+      }
     }
   });
 
@@ -119,22 +175,9 @@ export const createContentSchema = z.object({
 export type CreateContentInput = z.input<typeof createContentSchema>;
 export type CreateContentOutput = z.output<typeof createContentSchema>;
 
-export const createNoteSchema = z.object({
-  type: z.literal('note'),
-  topicId: z.uuid({ message: 'Выберите тему' }),
-  title: nonEmptyShort,
-  description: optionalText,
-  priority: priority.optional().nullable(),
-  deadlineOn: isoDate.optional().nullable(),
-});
-
-export type CreateNoteInput = z.input<typeof createNoteSchema>;
-export type CreateNoteOutput = z.output<typeof createNoteSchema>;
-
 export const createTaskSchema = z.discriminatedUnion('type', [
   createCustomSchema,
   createContentSchema,
-  createNoteSchema,
 ]);
 export type CreateTaskInput = z.input<typeof createTaskSchema>;
 export type CreateTaskOutput = z.output<typeof createTaskSchema>;
@@ -151,11 +194,14 @@ export const updateTaskSchema = z
     buyerHandle: z.string().trim().min(1).optional(),
     buyerDisplayName: optionalText,
     platform: z.string().trim().min(1).optional(),
+    contentKind: customContentKind.optional(),
     paymentModel: paymentModel.optional(),
     amountDollars: integerDollars.optional().nullable(),
     amountCollectedDollars: integerDollars.optional().nullable(),
     durationMinMinutes: integerMinutes.optional().nullable(),
     durationMaxMinutes: integerMinutes.optional().nullable(),
+    photoCountMin: integerCount.optional().nullable(),
+    photoCountMax: integerCount.optional().nullable(),
     agreementState: agreementState.optional().nullable(),
     requesterId: z.string().optional().nullable(),
     assigneeId: z.string().optional().nullable(),
@@ -197,6 +243,51 @@ export const updateTaskSchema = z
         message: 'Максимум должен быть ≥ минимума',
       });
     }
+    if (data.photoCountMin != null && data.photoCountMin <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['photoCountMin'],
+        message: 'Должно быть больше 0',
+      });
+    }
+    if (data.photoCountMax != null && data.photoCountMax <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['photoCountMax'],
+        message: 'Должно быть больше 0',
+      });
+    }
+    if (
+      data.photoCountMin != null &&
+      data.photoCountMax != null &&
+      data.photoCountMin > data.photoCountMax
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['photoCountMax'],
+        message: 'Максимум должен быть ≥ минимума',
+      });
+    }
+    if (
+      data.contentKind === 'video' &&
+      (data.photoCountMin != null || data.photoCountMax != null)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['photoCountMin'],
+        message: 'Для видео укажите длительность',
+      });
+    }
+    if (
+      data.contentKind === 'photo' &&
+      (data.durationMinMinutes != null || data.durationMaxMinutes != null)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['durationMinMinutes'],
+        message: 'Для фото укажите количество фото',
+      });
+    }
   });
 export type UpdateTaskInput = z.input<typeof updateTaskSchema>;
 export type UpdateTaskOutput = z.output<typeof updateTaskSchema>;
@@ -221,14 +312,13 @@ export const deleteTaskSchema = z.object({
 });
 export type DeleteTaskInput = z.input<typeof deleteTaskSchema>;
 
-export const recentEventsSchema = z
-  .union([
-    z.uuid().transform((taskId) => ({ taskId, limit: 20 })),
-    z.object({
-      taskId: z.uuid(),
-      limit: z.number().int().min(1).max(50).optional().default(20),
-    }),
-  ]);
+export const recentEventsSchema = z.union([
+  z.uuid().transform((taskId) => ({ taskId, limit: 20 })),
+  z.object({
+    taskId: z.uuid(),
+    limit: z.number().int().min(1).max(50).optional().default(20),
+  }),
+]);
 export type RecentEventsInput = z.input<typeof recentEventsSchema>;
 
 export const urlAttachmentSchema = z.object({
@@ -246,9 +336,13 @@ export const imageUploadIntentSchema = z.object({
   taskId: z.uuid(),
   filename: z.string().trim().min(1).max(255),
   mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']),
-  sizeBytes: z.number().int().positive().max(20 * 1024 * 1024, {
-    message: 'Изображение больше 20 МБ',
-  }),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(20 * 1024 * 1024, {
+      message: 'Изображение больше 20 МБ',
+    }),
 });
 export type ImageUploadIntent = z.infer<typeof imageUploadIntentSchema>;
 

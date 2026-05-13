@@ -8,7 +8,7 @@ export const DEMO_DATASET = 'telegram-export-2026-05-small';
 
 type DemoFixture = {
   sourceMessageId: number;
-  type: 'custom' | 'content_task' | 'note';
+  type: 'custom' | 'content_task';
   topicSlug: string;
   title: string;
   description: string | null;
@@ -20,11 +20,14 @@ type DemoFixture = {
   buyerHandle?: string;
   buyerDisplayName?: string | null;
   platform?: string;
+  contentKind?: 'video' | 'photo';
   paymentModel?: 'full' | 'unlock';
   amountCents?: number;
   amountCollectedCents?: number;
   durationMinSeconds?: number | null;
   durationMaxSeconds?: number | null;
+  photoCountMin?: number | null;
+  photoCountMax?: number | null;
   agreementState?: 'pending' | 'confirmed' | 'rejected';
 };
 
@@ -82,8 +85,11 @@ const DEMO_FIXTURES: DemoFixture[] = [
     paymentModel: 'full',
     amountCents: 5000,
     amountCollectedCents: 5000,
+    contentKind: 'photo',
     durationMinSeconds: null,
     durationMaxSeconds: null,
+    photoCountMin: 5,
+    photoCountMax: 10,
     agreementState: 'confirmed',
   },
   {
@@ -172,17 +178,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     requestOwner: true,
   },
   {
-    sourceMessageId: 9175,
-    type: 'note',
-    topicSlug: 'instagram',
-    title: 'Уточнение для монтажа: камера не слишком близко',
-    description:
-      'Для референсов с движением камеры снять ровно одним кадром и оставить запас по краям.',
-    status: 'draft',
-    priority: 'low',
-    deadlineOffsetDays: null,
-  },
-  {
     sourceMessageId: 9182,
     type: 'content_task',
     topicSlug: 'life',
@@ -194,17 +189,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     deadlineOffsetDays: 5,
     assignOwner: true,
     requestOwner: true,
-  },
-  {
-    sourceMessageId: 9269,
-    type: 'note',
-    topicSlug: 'customs',
-    title: 'Снять общий кадр реквизита',
-    description:
-      'Попросили фото всех игрушек рядом на одном кадре, чтобы быстро согласовывать кастомы.',
-    status: 'draft',
-    priority: 'low',
-    deadlineOffsetDays: 1,
   },
   {
     sourceMessageId: 9283,
@@ -330,6 +314,7 @@ export async function seedDemoTasks(
           buyerHandle: fixture.type === 'custom' ? (fixture.buyerHandle ?? null) : null,
           buyerDisplayName: fixture.type === 'custom' ? (fixture.buyerDisplayName ?? null) : null,
           platform: fixture.type === 'custom' ? (fixture.platform ?? null) : null,
+          contentKind: fixture.type === 'custom' ? (fixture.contentKind ?? 'video') : null,
           paymentModel: fixture.type === 'custom' ? (fixture.paymentModel ?? null) : null,
           amountCents: fixture.type === 'custom' ? (fixture.amountCents ?? null) : null,
           amountCollectedCents:
@@ -338,6 +323,8 @@ export async function seedDemoTasks(
             fixture.type === 'custom' ? (fixture.durationMinSeconds ?? null) : null,
           durationMaxSeconds:
             fixture.type === 'custom' ? (fixture.durationMaxSeconds ?? null) : null,
+          photoCountMin: fixture.type === 'custom' ? (fixture.photoCountMin ?? null) : null,
+          photoCountMax: fixture.type === 'custom' ? (fixture.photoCountMax ?? null) : null,
           agreementState: fixture.type === 'custom' ? (fixture.agreementState ?? 'pending') : null,
         })
         .returning({ id: tasks.id, topicId: tasks.topicId });

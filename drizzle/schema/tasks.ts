@@ -14,6 +14,7 @@ import {
 import {
   agreementStateEnum,
   attachmentKindEnum,
+  customContentKindEnum,
   paymentModelEnum,
   taskPriorityEnum,
   taskStatusEnum,
@@ -25,7 +26,9 @@ import { topics } from './topics';
 export const tasks = pgTable(
   'tasks',
   {
-    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     type: taskTypeEnum('type').notNull(),
     topicId: uuid('topic_id')
       .notNull()
@@ -49,11 +52,14 @@ export const tasks = pgTable(
     buyerHandle: text('buyer_handle'),
     buyerDisplayName: text('buyer_display_name'),
     platform: text('platform'),
+    contentKind: customContentKindEnum('content_kind'),
     paymentModel: paymentModelEnum('payment_model'),
     amountCents: integer('amount_cents'),
     amountCollectedCents: integer('amount_collected_cents'),
     durationMinSeconds: integer('duration_min_seconds'),
     durationMaxSeconds: integer('duration_max_seconds'),
+    photoCountMin: integer('photo_count_min'),
+    photoCountMax: integer('photo_count_max'),
     agreementState: agreementStateEnum('agreement_state'),
   },
   (t) => ({
@@ -69,13 +75,36 @@ export const tasks = pgTable(
         ${t.buyerHandle} IS NULL AND
         ${t.buyerDisplayName} IS NULL AND
         ${t.platform} IS NULL AND
+        ${t.contentKind} IS NULL AND
         ${t.paymentModel} IS NULL AND
         ${t.amountCents} IS NULL AND
         ${t.amountCollectedCents} IS NULL AND
         ${t.durationMinSeconds} IS NULL AND
         ${t.durationMaxSeconds} IS NULL AND
+        ${t.photoCountMin} IS NULL AND
+        ${t.photoCountMax} IS NULL AND
         ${t.agreementState} IS NULL
       )`,
+    ),
+    customContentKindRequiredCk: check(
+      'tasks_custom_content_kind_required_ck',
+      sql`${t.type} <> 'custom' OR ${t.contentKind} IS NOT NULL`,
+    ),
+    customContentShapeCk: check(
+      'tasks_custom_content_shape_ck',
+      sql`${t.contentKind} IS NULL
+        OR (
+          ${t.contentKind} = 'video'
+          AND ${t.photoCountMin} IS NULL
+          AND ${t.photoCountMax} IS NULL
+        )
+        OR (
+          ${t.contentKind} = 'photo'
+          AND ${t.durationMinSeconds} IS NULL
+          AND ${t.durationMaxSeconds} IS NULL
+          AND ${t.photoCountMin} IS NOT NULL
+          AND ${t.photoCountMax} IS NOT NULL
+        )`,
     ),
     deliveredOnlyCustomCk: check(
       'tasks_delivered_only_custom_ck',
@@ -101,6 +130,15 @@ export const tasks = pgTable(
       'tasks_duration_order_ck',
       sql`${t.durationMinSeconds} IS NULL OR ${t.durationMaxSeconds} IS NULL OR ${t.durationMinSeconds} <= ${t.durationMaxSeconds}`,
     ),
+    photoCountPositiveCk: check(
+      'tasks_photo_count_positive_ck',
+      sql`(${t.photoCountMin} IS NULL OR ${t.photoCountMin} > 0)
+        AND (${t.photoCountMax} IS NULL OR ${t.photoCountMax} > 0)`,
+    ),
+    photoCountOrderCk: check(
+      'tasks_photo_count_order_ck',
+      sql`${t.photoCountMin} IS NULL OR ${t.photoCountMax} IS NULL OR ${t.photoCountMin} <= ${t.photoCountMax}`,
+    ),
   }),
 );
 
@@ -110,7 +148,9 @@ export type NewTask = typeof tasks.$inferInsert;
 export const attachments = pgTable(
   'attachments',
   {
-    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     taskId: uuid('task_id')
       .notNull()
       .references(() => tasks.id, { onDelete: 'cascade' }),
@@ -141,7 +181,9 @@ export type NewAttachment = typeof attachments.$inferInsert;
 export const taskEvents = pgTable(
   'task_events',
   {
-    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     taskId: uuid('task_id')
       .notNull()
       .references(() => tasks.id, { onDelete: 'cascade' }),

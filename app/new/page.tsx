@@ -29,27 +29,10 @@ export default async function NewTaskPage() {
         showCreate={false}
       />
       <main className="app-shell" id="main">
-        <header
-          style={{
-            paddingBottom: '1rem',
-            marginBottom: '1.25rem',
-            borderBottom: '1px solid var(--color-line)',
-          }}
-        >
-          <p className="eyebrow" style={{ margin: 0 }}>
-            Создатель · {auth.user.displayName}
-          </p>
-          <h1
-            className="section-title"
-            style={{
-              fontSize: '1.85rem',
-              margin: '0.25rem 0 0',
-              fontWeight: 500,
-            }}
-          >
-            Новая ТЗ
-          </h1>
-        </header>
+        {/* h1 kept for accessibility / page hierarchy; the visible label is
+            already in the sticky banner above (Header component), so the page
+            heading itself is sr-only to keep the form above the fold. */}
+        <h1 className="sr-only">Новая ТЗ</h1>
         <NewTaskForm
           topics={topicRows}
           users={userRows}

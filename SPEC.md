@@ -135,7 +135,7 @@ Five core application entities:
 
 ### 4.1 Enums
 
-- `task_type` ∈ { `custom`, `content_task`, `note` }
+- `task_type` ∈ { `custom`, `content_task` }
 - `task_status` ∈ { `draft`, `in_progress`, `done`, `delivered`, `cancelled` }
 - `task_priority` ∈ { `low`, `medium`, `high` }
 - `payment_model` ∈ { `full`, `unlock` }
@@ -202,9 +202,7 @@ Topics are reference data, not a closed enum. New topics can be added by inserti
 | `duration_max_seconds` | int | Optional; if equal to min, rendered as a single value |
 | `agreement_state` | agreement_state | Custom-only; nullable; orthogonal to `status` |
 
-`agreement_state` exists **only** on `custom` tasks. It is removed from `content_task` and `note`.
-
-`note` rows are team-shared in MVP. There is no private-note visibility model.
+`agreement_state` exists **only** on `custom` tasks. It is not present on `content_task` rows.
 
 **Provenance / ingestion columns.** Deferred to v2 together with the ingest API (§11). `source`, `tg_chat_id`, `tg_topic_id`, `tg_message_id`, `fragment_id`, `raw_text`, `external_id`, and `first_human_edit_at` are **not** in the MVP schema. They will be added by migration when the bot ships.
 
@@ -347,7 +345,7 @@ Rules:
 - Present only on `custom`.
 - Nullable at all times.
 - Rendered as a sub-chip on the card while it is still operationally active.
-- Not used on `content_task` or `note`.
+- Not used on `content_task`.
 
 ### 6.3 Transition rules
 
@@ -360,7 +358,7 @@ Server-side FSM (`lib/fsm/taskStatus.ts`) remains permissive for the trusted 5-p
 - Reopen: `cancelled → draft`
 - Rollback one step: `delivered → done`, `done → in_progress`, `in_progress → draft`
 
-**Content-task and Note:**
+**Content-task:**
 
 - Forward: `draft → in_progress → done`
 - Cancel: any non-terminal → `cancelled`
@@ -376,12 +374,11 @@ The default feed surfaces **active** work. “Active” is type-specific and now
 |---|---|
 | `custom` | `status IN ('delivered', 'cancelled')` |
 | `content_task` | `status IN ('done', 'cancelled')` |
-| `note` | `status IN ('done', 'cancelled')` |
 
 Implications:
 
 - A `custom` task at `done` stays in the active feed because it still has operational value until it reaches `delivered`.
-- `content_task` and `note` leave the active feed at `done`.
+- `content_task` leaves the active feed at `done`.
 - `delivery_state` does not exist anywhere in the read or write logic.
 
 **Completed-work visibility in MVP.**
@@ -389,7 +386,7 @@ Implications:
 The PRD explicitly says the team needs to see what is done, so completed cards do not disappear entirely. Each topic section therefore includes a collapsed **“Recently completed”** subsection:
 
 - `custom` rows with `status = 'delivered'`
-- `content_task` and `note` rows with `status = 'done'`
+- `content_task` rows with `status = 'done'`
 - Window: last 7 days by `updated_at`, newest first
 - Default state: collapsed
 
@@ -477,7 +474,7 @@ Reasons: deep-linkable, works cleanly on mobile Safari, native back-button retur
 
 #### Type selector
 
-Three segmented buttons at the top of the page: `Custom` / `Content` / `Note`. Switching types swaps the visible field set below; common fields already filled (`title`, `topic_id`, `priority`, `deadline_on`, `description`) are preserved.
+Two segmented buttons at the top of the page: `Custom` / `Content`. Switching types swaps the visible field set below; common fields already filled (`title`, `topic_id`, `priority`, `deadline_on`, `description`) are preserved.
 
 #### Fields per type
 
@@ -511,14 +508,6 @@ Fields marked `*` block submission until filled.
 - Deadline*
 - Description
 - Attachments
-
-**Note**
-
-- Topic*
-- Title*
-- Description
-- Deadline — optional
-- Priority — optional
 
 #### Smart defaults
 
@@ -999,7 +988,6 @@ Nothing blocks MVP code. All deploy-time decisions are deferred until the deploy
 | Deadline granularity | Date-only (`deadline_on date`); no time-of-day | §4.3 |
 | Duration fields | Structured `duration_min_seconds` / `duration_max_seconds` | §4.3 |
 | Content-task money | No money fields on `content_task` | §4.3 |
-| Note visibility | Team-shared; no private notes | §4.3 |
 | Buyer naming | Split: `buyer_handle` (required) + `buyer_display_name` (optional) | §4.3, §6.6 |
 | Auth flow | Per-user login code (hashed at rest); no email, no SMTP | §8.1 |
 | User provisioning | CLI `pnpm user:add <name>` prints a fresh code once; `user:rotate-code`, `user:remove` | §8.2 |

@@ -34,7 +34,11 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
 
   const parsed = createTaskSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: 'Проверьте поля формы', fieldErrors: flattenZodErrors(parsed.error) };
+    return {
+      ok: false,
+      error: 'Проверьте поля формы',
+      fieldErrors: flattenZodErrors(parsed.error),
+    };
   }
 
   const data = parsed.data;
@@ -66,16 +70,19 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
           buyerHandle: data.buyerHandle,
           buyerDisplayName: data.buyerDisplayName,
           platform: data.platform,
+          contentKind: data.contentKind,
           paymentModel: data.paymentModel,
           amountCents: dollarsToCents(data.amountDollars),
           amountCollectedCents: dollarsToCents(data.amountCollectedDollars ?? 0),
           durationMinSeconds: minutesToSeconds(data.durationMinMinutes),
           durationMaxSeconds: minutesToSeconds(data.durationMaxMinutes),
+          photoCountMin: data.photoCountMin ?? null,
+          photoCountMax: data.photoCountMax ?? null,
           agreementState: data.agreementState ?? 'pending',
         })
         .returning({ id: tasks.id, topicId: tasks.topicId });
       inserted = row;
-    } else if (data.type === 'content_task') {
+    } else {
       const [row] = await tx
         .insert(tasks)
         .values({
@@ -87,21 +94,6 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
           deadlineOn: data.deadlineOn,
           requesterId: data.requesterId,
           assigneeId: data.assigneeId ?? null,
-          createdBy: auth.user.id,
-          lastEditedBy: auth.user.id,
-        })
-        .returning({ id: tasks.id, topicId: tasks.topicId });
-      inserted = row;
-    } else {
-      const [row] = await tx
-        .insert(tasks)
-        .values({
-          type: 'note',
-          topicId: data.topicId,
-          title: data.title,
-          description: data.description,
-          priority: data.priority ?? null,
-          deadlineOn: data.deadlineOn ?? null,
           createdBy: auth.user.id,
           lastEditedBy: auth.user.id,
         })
@@ -153,7 +145,11 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
 
   const parsed = updateTaskSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: 'Проверьте поля формы', fieldErrors: flattenZodErrors(parsed.error) };
+    return {
+      ok: false,
+      error: 'Проверьте поля формы',
+      fieldErrors: flattenZodErrors(parsed.error),
+    };
   }
   const v = parsed.data;
   const existing = await db.query.tasks.findFirst({ where: eq(tasks.id, v.id) });
@@ -188,6 +184,7 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
     if (v.buyerHandle !== undefined) patch.buyerHandle = v.buyerHandle;
     if (v.buyerDisplayName !== undefined) patch.buyerDisplayName = v.buyerDisplayName;
     if (v.platform !== undefined) patch.platform = v.platform;
+    if (v.contentKind !== undefined) patch.contentKind = v.contentKind;
     if (v.paymentModel !== undefined) patch.paymentModel = v.paymentModel;
     if (v.amountDollars !== undefined) patch.amountCents = dollarsToCents(v.amountDollars);
     if (v.amountCollectedDollars !== undefined) {
@@ -199,6 +196,8 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
     if (v.durationMaxMinutes !== undefined) {
       patch.durationMaxSeconds = minutesToSeconds(v.durationMaxMinutes);
     }
+    if (v.photoCountMin !== undefined) patch.photoCountMin = v.photoCountMin;
+    if (v.photoCountMax !== undefined) patch.photoCountMax = v.photoCountMax;
     if (v.agreementState !== undefined) patch.agreementState = v.agreementState;
   }
   if (existing.type === 'content_task') {
@@ -241,7 +240,9 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   return { ok: true, data: { id: v.id } };
 }
 
-export async function changeStatusAction(input: unknown): Promise<ActionResult<{ id: string; status: string }>> {
+export async function changeStatusAction(
+  input: unknown,
+): Promise<ActionResult<{ id: string; status: string }>> {
   const auth = await requireAuth().catch(() => null);
   if (!auth) return { ok: false, error: 'Сессия не найдена', code: 'unauthenticated' };
 
@@ -261,7 +262,11 @@ export async function changeStatusAction(input: unknown): Promise<ActionResult<{
       code: plan.code,
     };
   }
-  if (existing.type === 'custom' && newStatus === 'delivered' && existing.agreementState !== 'confirmed') {
+  if (
+    existing.type === 'custom' &&
+    newStatus === 'delivered' &&
+    existing.agreementState !== 'confirmed'
+  ) {
     return {
       ok: false,
       error: 'Перед доставкой подтвердите договорённость',
@@ -282,7 +287,12 @@ export async function changeStatusAction(input: unknown): Promise<ActionResult<{
     await tx.insert(taskEvents).values({
       taskId: id,
       actorId: auth.user.id,
-      eventType: plan.rule.kind === 'cancel' ? 'cancelled' : plan.rule.kind === 'reopen' ? 'reopened' : 'status_changed',
+      eventType:
+        plan.rule.kind === 'cancel'
+          ? 'cancelled'
+          : plan.rule.kind === 'reopen'
+            ? 'reopened'
+            : 'status_changed',
       payload: { from: existing.status, to: newStatus, kind: plan.rule.kind },
     });
 
@@ -304,7 +314,9 @@ export async function changeStatusAction(input: unknown): Promise<ActionResult<{
   return { ok: true, data: { id, status: newStatus } };
 }
 
-export async function setAgreementStateAction(input: unknown): Promise<ActionResult<{ id: string }>> {
+export async function setAgreementStateAction(
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
   const auth = await requireAuth().catch(() => null);
   if (!auth) return { ok: false, error: 'Сессия не найдена', code: 'unauthenticated' };
 
@@ -403,7 +415,9 @@ export async function deleteTaskAction(input: unknown): Promise<ActionResult<{ i
   return { ok: true, data: { id } };
 }
 
-export async function listAllowedTransitionsAction(taskId: string): Promise<ActionResult<{ status: string; targets: string[] }>> {
+export async function listAllowedTransitionsAction(
+  taskId: string,
+): Promise<ActionResult<{ status: string; targets: string[] }>> {
   const auth = await requireAuth().catch(() => null);
   if (!auth) return { ok: false, error: 'Сессия не найдена', code: 'unauthenticated' };
   const t = await db.query.tasks.findFirst({ where: eq(tasks.id, taskId) });
@@ -411,7 +425,9 @@ export async function listAllowedTransitionsAction(taskId: string): Promise<Acti
   return { ok: true, data: { status: t.status, targets: allowedTargets(t.type, t.status) } };
 }
 
-export async function getRecentEventsAction(input: unknown): Promise<ActionResult<{ events: TaskEvent[] }>> {
+export async function getRecentEventsAction(
+  input: unknown,
+): Promise<ActionResult<{ events: TaskEvent[] }>> {
   const auth = await requireAuth().catch(() => null);
   if (!auth) return { ok: false, error: 'Сессия не найдена', code: 'unauthenticated' };
   const parsed = recentEventsSchema.safeParse(input);
@@ -444,6 +460,9 @@ function validateUpdateAgainstExisting(
     existing.durationMinSeconds == null ? null : Math.round(existing.durationMinSeconds / 60);
   const existingDurationMax =
     existing.durationMaxSeconds == null ? null : Math.round(existing.durationMaxSeconds / 60);
+  const existingContentKind =
+    existing.contentKind ??
+    (existing.photoCountMin != null || existing.photoCountMax != null ? 'photo' : 'video');
 
   const amount = v.amountDollars !== undefined ? v.amountDollars : existingAmount;
   const collected =
@@ -452,6 +471,9 @@ function validateUpdateAgainstExisting(
     v.durationMinMinutes !== undefined ? v.durationMinMinutes : existingDurationMin;
   const durationMax =
     v.durationMaxMinutes !== undefined ? v.durationMaxMinutes : existingDurationMax;
+  const contentKind = v.contentKind !== undefined ? v.contentKind : existingContentKind;
+  const photoCountMin = v.photoCountMin !== undefined ? v.photoCountMin : existing.photoCountMin;
+  const photoCountMax = v.photoCountMax !== undefined ? v.photoCountMax : existing.photoCountMax;
 
   // Custom create requires amount > 0 (createCustomSchema). Don't let an edit
   // wipe it back to null/0 — that would silently break "outstanding" totals
@@ -473,6 +495,24 @@ function validateUpdateAgainstExisting(
   if (durationMin != null && durationMax != null && durationMin > durationMax) {
     errors.durationMaxMinutes = 'Максимум должен быть ≥ минимума';
   }
+  if (contentKind === 'video') {
+    if (photoCountMin != null || photoCountMax != null) {
+      errors.photoCountMin = 'Для видео укажите длительность';
+    }
+  } else {
+    if (durationMin != null || durationMax != null) {
+      errors.durationMinMinutes = 'Для фото укажите количество фото';
+    }
+    if (photoCountMin == null || photoCountMax == null) {
+      errors.photoCountMin = 'Укажите количество фото';
+    } else if (photoCountMin <= 0) {
+      errors.photoCountMin = 'Должно быть больше 0';
+    } else if (photoCountMax <= 0) {
+      errors.photoCountMax = 'Должно быть больше 0';
+    } else if (photoCountMin > photoCountMax) {
+      errors.photoCountMax = 'Максимум должен быть ≥ минимума';
+    }
+  }
 
   return Object.keys(errors).length > 0 ? errors : null;
 }
@@ -484,10 +524,14 @@ async function validateActiveContentUsers(
   const requested = [
     ['requesterId', input.requesterId, existing?.requesterId] as const,
     ['assigneeId', input.assigneeId, existing?.assigneeId] as const,
-  ].filter((entry): entry is readonly ['requesterId' | 'assigneeId', string, string | null | undefined] => {
-    const [, next, current] = entry;
-    return Boolean(next && next !== current);
-  });
+  ].filter(
+    (
+      entry,
+    ): entry is readonly ['requesterId' | 'assigneeId', string, string | null | undefined] => {
+      const [, next, current] = entry;
+      return Boolean(next && next !== current);
+    },
+  );
 
   if (requested.length === 0) return null;
 

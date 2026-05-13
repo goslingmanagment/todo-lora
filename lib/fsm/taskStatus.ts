@@ -110,7 +110,6 @@ export const PRIORITY_LABELS_RU = {
 export const TYPE_LABELS_RU = {
   custom: 'Custom',
   content_task: 'Контент',
-  note: 'Заметка',
 } as const;
 
 export const AGREEMENT_LABELS_RU = {
