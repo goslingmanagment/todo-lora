@@ -24,6 +24,7 @@ describe('createTaskSchema', () => {
       buyerHandle: '@x',
       buyerDisplayName: null,
       platform: 'Fansly',
+      contentKind: 'video',
       paymentModel: 'full',
       amountDollars: 200,
       amountCollectedDollars: 0,
@@ -32,6 +33,44 @@ describe('createTaskSchema', () => {
       agreementState: 'pending',
     });
     expect(r.success).toBe(true);
+  });
+
+  it('accepts valid Custom photo payload', () => {
+    const r = createTaskSchema.safeParse({
+      type: 'custom',
+      topicId: validUuid,
+      title: 'Custom для @x, 5-10 фото',
+      description: null,
+      priority: 'medium',
+      deadlineOn: '2026-05-15',
+      buyerHandle: '@x',
+      buyerDisplayName: null,
+      platform: 'Fansly',
+      contentKind: 'photo',
+      paymentModel: 'full',
+      amountDollars: 200,
+      amountCollectedDollars: 200,
+      photoCountMin: 5,
+      photoCountMax: 10,
+      agreementState: 'pending',
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('rejects photo custom without photo count', () => {
+    const r = createTaskSchema.safeParse({
+      type: 'custom',
+      topicId: validUuid,
+      title: 'X',
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      buyerHandle: '@x',
+      platform: 'Fansly',
+      contentKind: 'photo',
+      paymentModel: 'full',
+      amountDollars: 100,
+    });
+    expect(r.success).toBe(false);
   });
 
   it('rejects custom with collected > total', () => {
@@ -76,20 +115,13 @@ describe('createTaskSchema', () => {
     expect(r.success).toBe(false);
   });
 
-  it('accepts minimal note', () => {
-    const r = createTaskSchema.safeParse({
-      type: 'note',
-      topicId: validUuid,
-      title: 'Заметка',
-    });
-    expect(r.success).toBe(true);
-  });
-
   it('rejects bad ISO deadline', () => {
     const r = createTaskSchema.safeParse({
-      type: 'note',
+      type: 'content_task',
       topicId: validUuid,
       title: 'X',
+      priority: 'medium',
+      requesterId: 'user-1',
       deadlineOn: 'tomorrow',
     });
     expect(r.success).toBe(false);
@@ -98,14 +130,24 @@ describe('createTaskSchema', () => {
 
 describe('urlAttachmentSchema', () => {
   it('accepts http and https', () => {
-    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'http://x.example/' }).success).toBe(true);
-    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'https://x.example/path' }).success).toBe(true);
+    expect(
+      urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'http://x.example/' }).success,
+    ).toBe(true);
+    expect(
+      urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'https://x.example/path' }).success,
+    ).toBe(true);
   });
 
   it('rejects javascript: and data: URLs', () => {
-    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'javascript:alert(1)' }).success).toBe(false);
-    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'data:text/html,<x>' }).success).toBe(false);
-    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'ftp://x' }).success).toBe(false);
+    expect(
+      urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'javascript:alert(1)' }).success,
+    ).toBe(false);
+    expect(
+      urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'data:text/html,<x>' }).success,
+    ).toBe(false);
+    expect(urlAttachmentSchema.safeParse({ taskId: validUuid, url: 'ftp://x' }).success).toBe(
+      false,
+    );
   });
 });
 

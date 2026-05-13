@@ -54,9 +54,12 @@ test('feed in window 1 picks up a task created in window 2', async ({ browser })
     const title = uniqueTitle('E2E realtime');
 
     await creator.getByRole('link', { name: '+ Новая ТЗ' }).click();
-    await creator.getByRole('tab', { name: 'Заметка' }).click();
+    await creator.getByRole('tab', { name: 'Контент' }).click();
     await creator.getByLabel('Заголовок').fill(title);
-    await creator.getByRole('button', { name: 'Создать заметку' }).click();
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    await creator.getByLabel('Дедлайн').fill(d.toISOString().slice(0, 10));
+    await creator.getByRole('button', { name: 'Создать задачу' }).click();
     await expect(creator).toHaveURL(/\/\?created=/);
 
     // Feed window 1 should refresh via SSE within a few seconds.
@@ -77,15 +80,18 @@ test('detail page for task A does NOT refresh when task B is edited', async ({ b
     await loginWithCode(pageA, CODE);
     await loginWithCode(pageB, CODE);
 
-    // Create two notes from context B's page (the creator).
+    // Create two content tasks from context B's page (the creator).
     const titleA = uniqueTitle('E2E scope A');
     const titleB = uniqueTitle('E2E scope B');
 
     for (const title of [titleA, titleB]) {
       await pageB.goto('/new');
-      await pageB.getByRole('tab', { name: 'Заметка' }).click();
+      await pageB.getByRole('tab', { name: 'Контент' }).click();
       await pageB.getByLabel('Заголовок').fill(title);
-      await pageB.getByRole('button', { name: 'Создать заметку' }).click();
+      const d = new Date();
+      d.setDate(d.getDate() + 3);
+      await pageB.getByLabel('Дедлайн').fill(d.toISOString().slice(0, 10));
+      await pageB.getByRole('button', { name: 'Создать задачу' }).click();
       await expect(pageB).toHaveURL(/\/\?created=/);
     }
 

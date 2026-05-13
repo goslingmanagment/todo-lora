@@ -22,15 +22,15 @@ async function getCustomsTopicId(): Promise<string> {
 }
 
 describe('schema CHECKs', () => {
-  it('rejects custom-only fields on a note row', async () => {
+  it('rejects custom-only fields on a content_task row', async () => {
     const topicId = await getCustomsTopicId();
     await expect(
       db.insert(tasks).values({
-        type: 'note',
+        type: 'content_task',
         topicId,
-        title: 'bad note',
+        title: 'bad content_task',
         createdBy: OWNER_ID,
-        // Custom-only column on a note → CHECK should fail
+        // Custom-only column on a non-custom row → CHECK should fail
         buyerHandle: '@x',
       }),
     ).rejects.toThrow();
@@ -60,11 +60,34 @@ describe('schema CHECKs', () => {
         createdBy: OWNER_ID,
         buyerHandle: '@a',
         platform: 'Fansly',
+        contentKind: 'video',
         paymentModel: 'unlock',
         amountCents: 10000,
         amountCollectedCents: 5000,
         durationMinSeconds: 300,
         durationMaxSeconds: 600,
+      })
+      .returning();
+    expect(row?.id).toBeTruthy();
+  });
+
+  it('allows valid photo custom row', async () => {
+    const topicId = await getCustomsTopicId();
+    const [row] = await db
+      .insert(tasks)
+      .values({
+        type: 'custom',
+        topicId,
+        title: 'ok photo custom',
+        createdBy: OWNER_ID,
+        buyerHandle: '@photo',
+        platform: 'Fansly',
+        contentKind: 'photo',
+        paymentModel: 'full',
+        amountCents: 10000,
+        amountCollectedCents: 10000,
+        photoCountMin: 5,
+        photoCountMax: 10,
       })
       .returning();
     expect(row?.id).toBeTruthy();
@@ -134,7 +157,7 @@ describe('schema CHECKs', () => {
     const [task] = await db
       .insert(tasks)
       .values({
-        type: 'note',
+        type: 'content_task',
         topicId,
         title: 'attach test',
         createdBy: OWNER_ID,
@@ -171,7 +194,7 @@ describe('triggers', () => {
     const [t1] = await db
       .insert(tasks)
       .values({
-        type: 'note',
+        type: 'content_task',
         topicId,
         title: 'updated_at test',
         createdBy: OWNER_ID,
@@ -202,7 +225,7 @@ describe('triggers', () => {
       const [row] = await db
         .insert(tasks)
         .values({
-          type: 'note',
+          type: 'content_task',
           topicId,
           title: 'no-NOTIFY test',
           createdBy: OWNER_ID,

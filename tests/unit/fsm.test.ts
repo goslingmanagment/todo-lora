@@ -13,13 +13,10 @@ describe('status FSM', () => {
     expect(planTransition('custom', 'done', 'delivered').ok).toBe(true);
   });
 
-  it('rejects done → delivered for content/note', () => {
+  it('rejects done → delivered for content_task', () => {
     const a = planTransition('content_task', 'done', 'delivered');
-    const b = planTransition('note', 'done', 'delivered');
     expect(a.ok).toBe(false);
-    expect(b.ok).toBe(false);
     if (!a.ok) expect(a.code).toBe('wrong_type');
-    if (!b.ok) expect(b.code).toBe('wrong_type');
   });
 
   it('allows cancel from non-terminal statuses only', () => {
@@ -30,7 +27,7 @@ describe('status FSM', () => {
   });
 
   it('allows reopen cancelled → draft', () => {
-    expect(planTransition('note', 'cancelled', 'draft').ok).toBe(true);
+    expect(planTransition('content_task', 'cancelled', 'draft').ok).toBe(true);
   });
 
   it('allows one-step rollback', () => {
@@ -46,13 +43,12 @@ describe('status FSM', () => {
   });
 
   it('rejects no-op transitions', () => {
-    const r = planTransition('note', 'draft', 'draft');
+    const r = planTransition('content_task', 'draft', 'draft');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('noop');
   });
 
   it('allowedTargets excludes delivered for non-custom', () => {
-    expect(allowedTargets('note', 'done')).not.toContain('delivered');
     expect(allowedTargets('content_task', 'done')).not.toContain('delivered');
     expect(allowedTargets('custom', 'done')).toContain('delivered');
   });
@@ -81,7 +77,6 @@ describe('status FSM', () => {
       }),
     ).toBe(true);
     expect(isActive('content_task', 'done')).toBe(false);
-    expect(isActive('note', 'done')).toBe(false);
     expect(isActive('custom', 'cancelled')).toBe(false);
     expect(isActive('content_task', 'in_progress')).toBe(true);
   });

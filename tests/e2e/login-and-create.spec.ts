@@ -25,7 +25,9 @@ test.afterAll(async () => {
   purgeEphemeralUser(NAME);
 });
 
-test('user can log in, create a Custom task with attachments, edit it, and advance status', async ({ page }, testInfo) => {
+test('user can log in, create a Custom task with attachments, edit it, and advance status', async ({
+  page,
+}, testInfo) => {
   const taskTitle = `E2E custom ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const editedTitle = `${taskTitle} (edited)`;
   const urlAttachment = `https://example.com/todo-lora-e2e-${Date.now()}`;
@@ -59,7 +61,7 @@ test('user can log in, create a Custom task with attachments, edit it, and advan
 
   // Default tab is Custom
   await page.getByLabel('Заголовок').fill(taskTitle);
-  await page.getByLabel('Ник покупателя').fill('@e2e');
+  await page.getByLabel('Ник / ссылка').fill('@e2e');
   // Platform default is Fansly
   await page.getByLabel('Сумма, $').fill('150');
   // Set deadline to today + 7

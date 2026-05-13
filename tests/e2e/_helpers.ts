@@ -18,7 +18,7 @@ export function provisionEphemeralUser(name: string): string {
 
 export function purgeEphemeralUser(name: string): void {
   try {
-    execSync(`pnpm exec tsx scripts/user-purge.ts --yes "${name}"`, {
+    execSync(`pnpm exec tsx scripts/user-purge.ts --yes --confirm "${name}" "${name}"`, {
       cwd: process.cwd(),
       encoding: 'utf8',
       stdio: 'pipe',
@@ -35,10 +35,7 @@ export function purgeEphemeralUser(name: string): void {
 export async function loginWithCode(page: Page, code: string): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Код').fill(code);
-  await Promise.all([
-    page.waitForURL(/\/$/),
-    page.getByRole('button', { name: 'Войти' }).click(),
-  ]);
+  await Promise.all([page.waitForURL(/\/$/), page.getByRole('button', { name: 'Войти' }).click()]);
   await expect(getCreateTaskLink(page)).toBeVisible();
 }
 

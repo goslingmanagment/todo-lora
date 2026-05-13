@@ -15,6 +15,21 @@ const ACTOR_ID = '00000000-0000-0000-0000-0000000000aa';
 const OTHER_ID = '00000000-0000-0000-0000-0000000000bb';
 const VALID_MISSING_TASK_ID = '00000000-0000-0000-0000-0000000000cc';
 
+// Default content_task fixture used as a stub anywhere we just need *some*
+// task to exist. Previously these tests used `type: 'note'` because note
+// required no extra fields; with note removed, content_task is the cheapest
+// real option and needs requester/priority/deadline.
+function stubInput(topicId: string, title: string) {
+  return {
+    type: 'content_task' as const,
+    topicId,
+    title,
+    priority: 'medium' as const,
+    deadlineOn: '2026-06-01',
+    requesterId: ACTOR_ID,
+  };
+}
+
 const authState = vi.hoisted(() => ({ authenticated: true }));
 const sanitizeState = vi.hoisted(() => ({
   calls: [] as string[],
@@ -228,16 +243,6 @@ describe('createTaskAction', () => {
     }
   });
 
-  it('creates a note with optional fields', async () => {
-    const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'a note',
-    });
-    expect(r.ok).toBe(true);
-  });
-
   it('stores server-side defaults per user and task type', async () => {
     const customsTopicId = await getCustomsTopicId();
     const setsTopicId = await getTopicId('sets');
@@ -271,22 +276,18 @@ describe('createTaskAction', () => {
     });
     expect(r2.ok).toBe(true);
 
-    const r3 = await actions.createTaskAction({
-      type: 'note',
-      topicId: customsTopicId,
-      title: 'Note prefs',
-    });
+    const r3 = await actions.createTaskAction(stubInput(customsTopicId, 'Content prefs'));
     expect(r3.ok).toBe(true);
 
     const prefs = await db.select().from(schema.userPreferences);
     const customPref = prefs.find((pref) => pref.taskType === 'custom');
-    const notePref = prefs.find((pref) => pref.taskType === 'note');
+    const contentPref = prefs.find((pref) => pref.taskType === 'content_task');
 
     expect(customPref?.userId).toBe(ACTOR_ID);
     expect(customPref?.lastTopicId).toBe(setsTopicId);
     expect(customPref?.lastPlatform).toBe('ManyVids');
-    expect(notePref?.lastTopicId).toBe(customsTopicId);
-    expect(notePref?.lastPlatform).toBeNull();
+    expect(contentPref?.lastTopicId).toBe(customsTopicId);
+    expect(contentPref?.lastPlatform).toBeNull();
   });
 });
 
@@ -294,11 +295,7 @@ describe('protected server actions', () => {
   it('rejects unauthenticated task and audit reads', async () => {
     authState.authenticated = false;
 
-    const create = await actions.createTaskAction({
-      type: 'note',
-      topicId: await getCustomsTopicId(),
-      title: 'blocked',
-    });
+    const create = await actions.createTaskAction(stubInput(await getCustomsTopicId(), 'blocked'));
     expect(create.ok).toBe(false);
     if (!create.ok) expect(create.code).toBe('unauthenticated');
 
@@ -323,35 +320,31 @@ describe('shared lookup helpers', () => {
 describe('demo data actions', () => {
   it('seeds a small idempotent demo set and clears only demo tasks', async () => {
     const topicId = await getCustomsTopicId();
-    const realTask = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'real task must stay',
-    });
+    const realTask = await actions.createTaskAction(stubInput(topicId, 'real task must stay'));
     expect(realTask.ok).toBe(true);
 
     const seeded = await actions.seedDemoDataAction();
     expect(seeded.ok).toBe(true);
     if (!seeded.ok) return;
-    expect(seeded.data.inserted).toBe(15);
+    expect(seeded.data.inserted).toBe(13);
     expect(seeded.data.existing).toBe(0);
 
     const afterSeed = await db.select().from(schema.tasks);
-    expect(afterSeed).toHaveLength(16);
+    expect(afterSeed).toHaveLength(14);
 
     const secondSeed = await actions.seedDemoDataAction();
     expect(secondSeed.ok).toBe(true);
     if (!secondSeed.ok) return;
     expect(secondSeed.data.inserted).toBe(0);
-    expect(secondSeed.data.existing).toBe(15);
+    expect(secondSeed.data.existing).toBe(13);
 
     const afterSecondSeed = await db.select().from(schema.tasks);
-    expect(afterSecondSeed).toHaveLength(16);
+    expect(afterSecondSeed).toHaveLength(14);
 
     const [legacySeedTask] = await db
       .insert(schema.tasks)
       .values({
-        type: 'note',
+        type: 'content_task',
         topicId,
         title: 'legacy seed task',
         createdBy: ACTOR_ID,
@@ -362,16 +355,16 @@ describe('demo data actions', () => {
       taskId: legacySeedTask.id,
       actorId: ACTOR_ID,
       eventType: 'created',
-      payload: { seed: true, type: 'note', status: 'draft' },
+      payload: { seed: true, type: 'content_task', status: 'draft' },
     });
 
     const afterLegacy = await db.select().from(schema.tasks);
-    expect(afterLegacy).toHaveLength(17);
+    expect(afterLegacy).toHaveLength(15);
 
     const cleared = await actions.clearDemoDataAction();
     expect(cleared.ok).toBe(true);
     if (!cleared.ok) return;
-    expect(cleared.data.deleted).toBe(16);
+    expect(cleared.data.deleted).toBe(14);
 
     const remaining = await db.select().from(schema.tasks);
     expect(remaining).toHaveLength(1);
@@ -558,11 +551,7 @@ describe('changeStatusAction (FSM + OCC)', () => {
 describe('agreement state', () => {
   it('rejects setAgreementState on non-Custom', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'note',
-    });
+    const c = await actions.createTaskAction(stubInput(topicId, 'note'));
     if (!c.ok) throw new Error('create failed');
     const task = await reloadTask(c.data.id);
     const r = await actions.setAgreementStateAction({
@@ -616,7 +605,7 @@ describe('URL attachments', () => {
     const [task] = await db
       .insert(schema.tasks)
       .values({
-        type: 'note',
+        type: 'content_task',
         topicId,
         title: 'attach',
         createdBy: OTHER_ID,
@@ -650,7 +639,7 @@ describe('URL attachments', () => {
 
   it('does not create duplicate audit events or version bumps on stale attachment delete', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'double delete' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'double delete'));
     if (!c.ok) throw new Error('create failed');
     const a = await actions.createUrlAttachmentAction({
       taskId: c.data.id,
@@ -675,11 +664,7 @@ describe('URL attachments', () => {
 
   it('rejects javascript: URLs', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'attach',
-    });
+    const c = await actions.createTaskAction(stubInput(topicId, 'attach'));
     if (!c.ok) throw new Error('create failed');
     const a = await actions.createUrlAttachmentAction({
       taskId: c.data.id,
@@ -690,7 +675,7 @@ describe('URL attachments', () => {
 
   it('enforces 10-attachment cap', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'cap' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'cap'));
     if (!c.ok) throw new Error('create failed');
     for (let i = 0; i < 10; i++) {
       const r = await actions.createUrlAttachmentAction({
@@ -708,7 +693,7 @@ describe('URL attachments', () => {
 
   it('serializes concurrent writes at the 10-attachment cap', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'cap race' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'cap race'));
     if (!c.ok) throw new Error('create failed');
 
     const results = await Promise.all(
@@ -827,32 +812,36 @@ describe('feed query', () => {
     const yesterday = addDaysIso(today, -1);
 
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'low active',
       priority: 'low',
       deadlineOn: today,
+      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'med tomorrow',
       priority: 'medium',
       deadlineOn: tomorrow,
+      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'high today',
       priority: 'high',
       deadlineOn: today,
+      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'high overdue',
       priority: 'high',
       deadlineOn: yesterday,
+      requesterId: ACTOR_ID,
     });
 
     const urgentAll = await feed.getFeed('all', { urgent: true });
@@ -868,10 +857,12 @@ describe('feed query', () => {
   it('searches active tasks by title and custom buyer fields', async () => {
     const topicId = await getCustomsTopicId();
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'ordinary note',
-      priority: null,
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'custom',
@@ -902,18 +893,20 @@ describe('feed query', () => {
     const today = toMskDateString();
     const yesterday = addDaysIso(today, -1);
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'overdue',
       deadlineOn: yesterday,
       priority: 'low',
+      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
-      type: 'note',
+      type: 'content_task',
       topicId,
       title: 'today',
       deadlineOn: today,
       priority: 'low',
+      requesterId: ACTOR_ID,
     });
     const overdue = await feed.getFeed('overdue');
     const overdueRows = overdue.sections.flatMap((s) => s.active);
@@ -933,11 +926,7 @@ describe('realtime invalidation fanout', () => {
         if (msg.payload) payloads.push(msg.payload);
       });
 
-      const r = await actions.createTaskAction({
-        type: 'note',
-        topicId,
-        title: 'one-notify',
-      });
+      const r = await actions.createTaskAction(stubInput(topicId, 'one-notify'));
       expect(r.ok).toBe(true);
       // Generous flush window — Postgres delivers NOTIFY on commit; the
       // listening connection drains them on its next event-loop tick.
@@ -956,11 +945,7 @@ describe('realtime invalidation fanout', () => {
 
   it('emits exactly one NOTIFY per updateTaskAction', async () => {
     const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'pre-update',
-    });
+    const r = await actions.createTaskAction(stubInput(topicId, 'pre-update'));
     if (!r.ok) throw new Error('create failed');
     const fresh = await reloadTask(r.data.id);
 
@@ -993,11 +978,7 @@ describe('realtime invalidation fanout', () => {
 describe('updateTaskAction', () => {
   it('records audit event and bumps updated_at', async () => {
     const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'orig',
-    });
+    const r = await actions.createTaskAction(stubInput(topicId, 'orig'));
     if (!r.ok) throw new Error('create failed');
     const before = await reloadTask(r.data.id);
     await new Promise((res) => setTimeout(res, 5));
@@ -1017,11 +998,7 @@ describe('updateTaskAction', () => {
 
   it('returns stale on OCC mismatch and does not write', async () => {
     const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'occ orig',
-    });
+    const r = await actions.createTaskAction(stubInput(topicId, 'occ orig'));
     if (!r.ok) throw new Error('create failed');
     const beforeEvents = await recentEvents(r.data.id);
     const before = await reloadTask(r.data.id);
@@ -1044,11 +1021,7 @@ describe('updateTaskAction', () => {
 
   it('rejects a second concurrent write with stale once one has landed', async () => {
     const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'note',
-      topicId,
-      title: 'race orig',
-    });
+    const r = await actions.createTaskAction(stubInput(topicId, 'race orig'));
     if (!r.ok) throw new Error('create failed');
     const snapshot = await reloadTask(r.data.id);
 
@@ -1190,7 +1163,7 @@ describe('image attachment finalization', () => {
     const [task] = await db
       .insert(schema.tasks)
       .values({
-        type: 'note',
+        type: 'content_task',
         topicId,
         title: 'pic',
         createdBy: OTHER_ID,
@@ -1220,7 +1193,7 @@ describe('image attachment finalization', () => {
 
   it('skips sanitize and deletes staging when the cap is already reached', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'pic cap' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic cap'));
     if (!c.ok) throw new Error('create failed');
     await insertUrlAttachments(c.data.id, 10);
     const stagingKey = `staging/${c.data.id}/00000000-0000-4000-8000-000000000001.jpg`;
@@ -1239,7 +1212,7 @@ describe('image attachment finalization', () => {
 
   it('deletes staging when sanitize fails', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'pic sanitize fail' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic sanitize fail'));
     if (!c.ok) throw new Error('create failed');
     const stagingKey = `staging/${c.data.id}/00000000-0000-4000-8000-000000000001.jpg`;
     sanitizeState.throwOnSanitize = new Error('bad image metadata');
@@ -1258,7 +1231,7 @@ describe('image attachment finalization', () => {
 
   it('rechecks the cap after sanitize and deletes the canonical object on cap race', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'pic cap race' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic cap race'));
     if (!c.ok) throw new Error('create failed');
     sanitizeState.onSanitize = async (taskId) => {
       await insertUrlAttachments(taskId, 10);
@@ -1283,7 +1256,7 @@ describe('image attachment finalization', () => {
 
   it('deletes the canonical object when DB finalization fails', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'pic db fail' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic db fail'));
     if (!c.ok) throw new Error('create failed');
     await getPool().query(`
       CREATE OR REPLACE FUNCTION fail_task_event_insert() RETURNS trigger AS $$
@@ -1321,7 +1294,7 @@ describe('image attachment finalization', () => {
 
   it('rejects forged canonical object keys before sanitize', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'pic' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic'));
     if (!c.ok) throw new Error('create failed');
     const r = await actions.finalizeImageAttachmentAction({
       taskId: c.data.id,
@@ -1339,7 +1312,7 @@ describe('image attachment finalization', () => {
 describe('deleteTaskAction (hard delete)', () => {
   it('removes the row, cascades attachments + events, and cleans MinIO objects', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'to delete' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'to delete'));
     if (!c.ok) throw new Error('create failed');
 
     // Attach a URL (kept in DB only) and an image (kept in MinIO + DB).
@@ -1388,7 +1361,7 @@ describe('deleteTaskAction (hard delete)', () => {
 
   it('returns stale when expectedVersion is wrong and does not delete', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'survive' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'survive'));
     if (!c.ok) throw new Error('create failed');
 
     const del = await actions.deleteTaskAction({
@@ -1404,7 +1377,7 @@ describe('deleteTaskAction (hard delete)', () => {
 
   it('hides the task from feed reads after hard delete', async () => {
     const topicId = await getCustomsTopicId();
-    const c = await actions.createTaskAction({ type: 'note', topicId, title: 'visible then gone' });
+    const c = await actions.createTaskAction(stubInput(topicId, 'visible then gone'));
     if (!c.ok) throw new Error('create failed');
     const fresh = await reloadTask(c.data.id);
 

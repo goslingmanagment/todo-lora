@@ -8,15 +8,14 @@ import {
 } from './_helpers';
 
 /**
- * Note + Content task creation end-to-end.
+ * Content task creation end-to-end.
  *
- * The existing E2E spec covers only Custom. This adds the two other task
- * types because they each have their own field set and (for Content) a
- * required requester. A regression in either tab is invisible until users
- * try to create one in production.
+ * The Custom path is covered separately; this spec guards the Content tab
+ * specifically because it has its own field set and a required requester
+ * dropdown.
  */
 
-const NAME = `E2E-NC-${Date.now()}`;
+const NAME = `E2E-CT-${Date.now()}`;
 let CODE = '';
 
 test.beforeAll(() => {
@@ -24,22 +23,6 @@ test.beforeAll(() => {
 });
 test.afterAll(() => {
   purgeEphemeralUser(NAME);
-});
-
-test('Note: minimal fields, lands in feed', async ({ page }) => {
-  const title = uniqueTitle('E2E note');
-
-  await loginWithCode(page, CODE);
-  await getCreateTaskLink(page).click();
-  await expect(page).toHaveURL(/\/new$/);
-
-  await page.getByRole('tab', { name: 'Заметка' }).click();
-  await page.getByLabel('Заголовок').fill(title);
-  // Note has no required money/buyer/requester fields. Just submit.
-  await page.getByRole('button', { name: 'Создать заметку' }).click();
-
-  await expect(page).toHaveURL(/\/\?created=[0-9a-f-]{36}$/i);
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
 });
 
 test('Content: requester required, then creates and lands in feed', async ({ page }) => {
