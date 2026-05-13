@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { FilterValue, ViewValue } from '@/lib/validation/schemas';
 
 const ICON_PROPS = {
@@ -81,9 +83,36 @@ export function ViewSwitcher({
   };
 
   const activeLabel = VIEWS.find((v) => v.key === active)?.label ?? '2 колонки';
+  const ref = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const el = ref.current;
+      if (!el?.open) return;
+      if (!el.contains(e.target as Node)) el.open = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && ref.current?.open) ref.current.open = false;
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  // Close on navigation (active view changed via menu).
+  useEffect(() => {
+    if (ref.current) ref.current.open = false;
+  }, [active]);
+
+  const closeMenu = () => {
+    if (ref.current) ref.current.open = false;
+  };
 
   return (
-    <details className="view-dropdown">
+    <details ref={ref} className="view-dropdown">
       <summary className="view-dropdown-trigger" aria-label="Сменить вид ленты">
         <span className="view-dropdown-icon">{ICONS[active]}</span>
         <span className="view-dropdown-key">Вид:</span>
@@ -113,6 +142,7 @@ export function ViewSwitcher({
               aria-current={isActive ? 'page' : undefined}
               prefetch={false}
               className="view-dropdown-item"
+              onClick={closeMenu}
             >
               <span className="view-dropdown-icon">{ICONS[v.key]}</span>
               <span>{v.label}</span>
