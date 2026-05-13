@@ -1101,6 +1101,32 @@ describe('updateTaskAction', () => {
     }
   });
 
+  it('clears requester when the edit form sends requesterId null', async () => {
+    const topicId = await getCustomsTopicId();
+    const r = await actions.createTaskAction({
+      type: 'content_task',
+      topicId,
+      title: 'clear requester',
+      priority: 'medium',
+      deadlineOn: '2026-05-15',
+      requesterId: ACTOR_ID,
+      assigneeId: OTHER_ID,
+    });
+    if (!r.ok) throw new Error('create failed');
+    const before = await reloadTask(r.data.id);
+
+    const cleared = await actions.updateTaskAction({
+      id: r.data.id,
+      expectedVersion: before.version,
+      requesterId: null,
+    });
+
+    expect(cleared.ok).toBe(true);
+    const after = await reloadTask(r.data.id);
+    expect(after.requesterId).toBeNull();
+    expect(after.assigneeId).toBe(OTHER_ID);
+  });
+
   it('returns field errors for invalid custom money and duration updates', async () => {
     const topicId = await getCustomsTopicId();
     const r = await actions.createTaskAction({

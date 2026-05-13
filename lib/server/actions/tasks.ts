@@ -256,7 +256,7 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   }
   if (existing.type === 'content_task') {
     if (v.title !== undefined) patch.title = v.title;
-    if (v.requesterId !== undefined && v.requesterId !== null) patch.requesterId = v.requesterId;
+    if (v.requesterId !== undefined) patch.requesterId = v.requesterId;
     if (v.assigneeId !== undefined) patch.assigneeId = v.assigneeId;
   }
 
