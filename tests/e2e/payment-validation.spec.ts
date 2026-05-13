@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginWithCode, provisionEphemeralUser, purgeEphemeralUser, uniqueTitle } from './_helpers';
+import { loginWithCode, provisionEphemeralUser, purgeEphemeralUser } from './_helpers';
 
 /**
  * Payment validation on edit (Custom-only).
@@ -20,14 +20,15 @@ test.afterAll(() => {
 });
 
 test('edit rejects collected > total and nulling the amount', async ({ page }) => {
-  const title = uniqueTitle('E2E pay');
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const buyerHandle = `@e2epay_${suffix}`;
+  const title = `Custom для ${buyerHandle}`;
 
   await loginWithCode(page, CODE);
 
   // Create a Custom task with amount=$100.
   await page.getByRole('link', { name: '+ Новая ТЗ' }).click();
-  await page.getByLabel('Заголовок').fill(title);
-  await page.getByLabel('Ник / ссылка').fill('@e2e');
+  await page.getByLabel('Ник / ссылка').fill(buyerHandle);
   await page.getByLabel('Сумма, $').fill('100');
   const future = new Date();
   future.setDate(future.getDate() + 7);

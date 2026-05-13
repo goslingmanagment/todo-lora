@@ -34,8 +34,11 @@ export function purgeEphemeralUser(name: string): void {
  */
 export async function loginWithCode(page: Page, code: string): Promise<void> {
   await page.goto('/login');
+  await page.waitForLoadState('networkidle');
   await page.getByLabel('Код').fill(code);
-  await Promise.all([page.waitForURL(/\/$/), page.getByRole('button', { name: 'Войти' }).click()]);
+  const loginButton = page.getByRole('button', { name: 'Войти' });
+  await expect(loginButton).toBeEnabled();
+  await Promise.all([page.waitForURL(/\/$/), loginButton.click()]);
   await expect(getCreateTaskLink(page)).toBeVisible();
 }
 

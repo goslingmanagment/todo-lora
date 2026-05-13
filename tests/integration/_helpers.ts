@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { GenericContainer, type StartedTestContainer } from 'testcontainers';
+import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainers';
 import * as schema from '@/drizzle/schema';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +24,7 @@ export async function startTestDb(): Promise<IntegrationDB> {
         POSTGRES_PASSWORD: 'todo_lora_test',
       })
       .withExposedPorts(5432)
+      .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/, 2))
       .withStartupTimeout(120_000)
       .start();
   }

@@ -130,7 +130,7 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
-  await db._close();
+  await db?._close();
 });
 
 beforeEach(async () => {

@@ -62,15 +62,15 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
         data.title && data.title.length > 0
           ? data.title
           : inferCustomTaskTitle({
-          buyerHandle: data.buyerHandle,
-          buyerDisplayName: data.buyerDisplayName,
-          contentKind: data.contentKind,
-          description: data.description,
-          durationMinMinutes: data.durationMinMinutes,
-          durationMaxMinutes: data.durationMaxMinutes,
-          photoCountMin: data.photoCountMin,
-          photoCountMax: data.photoCountMax,
-        });
+              buyerHandle: data.buyerHandle,
+              buyerDisplayName: data.buyerDisplayName,
+              contentKind: data.contentKind,
+              description: data.description,
+              durationMinMinutes: data.durationMinMinutes,
+              durationMaxMinutes: data.durationMaxMinutes,
+              photoCountMin: data.photoCountMin,
+              photoCountMax: data.photoCountMax,
+            });
       createdTitle = title;
       const [row] = await tx
         .insert(tasks)
@@ -220,11 +220,22 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
       existing.durationMinSeconds == null ? null : Math.round(existing.durationMinSeconds / 60);
     const existingDurationMax =
       existing.durationMaxSeconds == null ? null : Math.round(existing.durationMaxSeconds / 60);
-    const resolvedContentKind =
-      v.contentKind ??
+    const existingContentKind =
       existing.contentKind ??
       (existing.photoCountMin != null || existing.photoCountMax != null ? 'photo' : 'video');
-    patch.title = inferCustomTaskTitle({
+    const resolvedContentKind =
+      v.contentKind ?? existingContentKind;
+    const existingGeneratedTitle = inferCustomTaskTitle({
+      buyerHandle: existing.buyerHandle,
+      buyerDisplayName: existing.buyerDisplayName,
+      contentKind: existingContentKind,
+      description: existing.description,
+      durationMinMinutes: existingDurationMin,
+      durationMaxMinutes: existingDurationMax,
+      photoCountMin: existing.photoCountMin,
+      photoCountMax: existing.photoCountMax,
+    });
+    const updatedGeneratedTitle = inferCustomTaskTitle({
       buyerHandle: v.buyerHandle !== undefined ? v.buyerHandle : existing.buyerHandle,
       buyerDisplayName:
         v.buyerDisplayName !== undefined ? v.buyerDisplayName : existing.buyerDisplayName,
@@ -237,6 +248,11 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
       photoCountMin: v.photoCountMin !== undefined ? v.photoCountMin : existing.photoCountMin,
       photoCountMax: v.photoCountMax !== undefined ? v.photoCountMax : existing.photoCountMax,
     });
+    if (v.title !== undefined) {
+      patch.title = v.title && v.title.length > 0 ? v.title : updatedGeneratedTitle;
+    } else if (existing.title === existingGeneratedTitle) {
+      patch.title = updatedGeneratedTitle;
+    }
   }
   if (existing.type === 'content_task') {
     if (v.title !== undefined) patch.title = v.title;

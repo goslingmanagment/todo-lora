@@ -553,6 +553,7 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
       return {
         type: 'custom' as const,
         topicId,
+        title: trimmedTitle || null,
         description: composedDescription,
         priority: priority ?? 'medium',
         deadlineOn,
@@ -934,10 +935,23 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
 
           {type === 'custom' ? (
             <>
-              {/* Buyer */}
+              {/* Custom details */}
               <div className="task-form-side-section">
-                <h4>Покупатель</h4>
+                <h4>Детали</h4>
                 <div className="task-form-side-stack">
+                  <Field id="title" label="Заголовок" error={errors.title}>
+                    <input
+                      id="title"
+                      className="input"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      maxLength={200}
+                      placeholder="опционально"
+                      aria-invalid={errors.title ? 'true' : undefined}
+                      aria-describedby={errors.title ? 'title-error' : undefined}
+                    />
+                  </Field>
+
                   <Field id="platform" label="Платформа" error={errors.platform}>
                     <div className="segmented" role="radiogroup" aria-label="Платформа">
                       {(['Fansly', 'OnlyFans', 'Other'] as const).map((p) => (

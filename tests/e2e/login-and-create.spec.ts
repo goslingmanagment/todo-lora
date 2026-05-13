@@ -28,11 +28,15 @@ test.afterAll(async () => {
 test('user can log in, create a Custom task with attachments, edit it, and advance status', async ({
   page,
 }, testInfo) => {
-  const taskTitle = `E2E custom ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const editedTitle = `${taskTitle} (edited)`;
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const buyerHandle = `@e2e_${suffix}`;
+  const taskTitle = `Custom для ${buyerHandle}`;
+  const editedBuyerName = `E2E Buyer ${suffix}`;
+  const editedTitle = `Custom для ${editedBuyerName}`;
   const urlAttachment = `https://example.com/todo-lora-e2e-${Date.now()}`;
 
   await page.goto('/login');
+  await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'todo-lora' })).toBeVisible();
 
   // Basic accessibility check on the login page.
@@ -43,7 +47,9 @@ test('user can log in, create a Custom task with attachments, edit it, and advan
   expect.soft(axe.violations, JSON.stringify(axe.violations, null, 2)).toEqual([]);
 
   await page.getByLabel('Код').fill(CODE);
-  await page.getByRole('button', { name: 'Войти' }).click();
+  const loginButton = page.getByRole('button', { name: 'Войти' });
+  await expect(loginButton).toBeEnabled();
+  await loginButton.click();
 
   const createTaskLink = getCreateTaskLink(page);
   await expect(createTaskLink).toBeVisible();
@@ -59,9 +65,8 @@ test('user can log in, create a Custom task with attachments, edit it, and advan
   await createTaskLink.click();
   await expect(page).toHaveURL(/\/new$/);
 
-  // Default tab is Custom
-  await page.getByLabel('Заголовок').fill(taskTitle);
-  await page.getByLabel('Ник / ссылка').fill('@e2e');
+  // Default tab is Custom; title is inferred from buyer/content fields.
+  await page.getByLabel('Ник / ссылка').fill(buyerHandle);
   // Platform default is Fansly
   await page.getByLabel('Сумма, $').fill('150');
   // Set deadline to today + 7
@@ -100,9 +105,9 @@ test('user can log in, create a Custom task with attachments, edit it, and advan
   await page.getByRole('button', { name: 'В работе' }).click();
   await expect(page.locator('header .chip').filter({ hasText: 'В работе' })).toBeVisible();
 
-  // Edit title
+  // Edit buyer display name; Custom title is regenerated from task fields.
   await page.getByRole('button', { name: 'Редактировать' }).click();
-  await page.getByLabel('Заголовок').fill(editedTitle);
+  await page.getByLabel('Имя покупателя').fill(editedBuyerName);
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('heading', { name: editedTitle })).toBeVisible();
 });
