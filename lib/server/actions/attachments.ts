@@ -12,8 +12,9 @@ import {
   urlAttachmentSchema,
 } from '@/lib/validation/schemas';
 import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
-import { createUploadPresign, deleteObject } from '@/lib/storage/presign';
+import { createUploadPresign, deleteObject, getObjectSize } from '@/lib/storage/presign';
 import { sanitizeStagedImage } from '@/lib/storage/sanitize';
+import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
 import { ATTACHMENT_LIMIT, flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createUrlAttachmentAction(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -127,6 +128,18 @@ export async function finalizeImageAttachmentAction(
   if ((precheckRows[0]?.value ?? 0) >= ATTACHMENT_LIMIT) {
     void deleteObject(stagingKey);
     return { ok: false, error: 'Достигнут предел в 10 вложений' };
+  }
+
+  let stagedSize: number;
+  try {
+    stagedSize = await getObjectSize(stagingKey);
+  } catch {
+    await deleteObject(stagingKey);
+    return { ok: false, error: 'Не удалось обработать изображение', code: 'sanitize_failed' };
+  }
+  if (stagedSize > MAX_IMAGE_BYTES) {
+    await deleteObject(stagingKey);
+    return { ok: false, error: 'Изображение больше 20 МБ' };
   }
 
   let canonical: Awaited<ReturnType<typeof sanitizeStagedImage>> | null = null;

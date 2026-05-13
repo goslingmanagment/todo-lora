@@ -98,6 +98,17 @@ export async function getObjectAsBuffer(key: string): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+export async function getObjectSize(key: string): Promise<number> {
+  const cfg = getConfig().minio;
+  const client = getStorageClient();
+  const stat = await client.statObject(cfg.bucket, key);
+  const size = Number(stat.size);
+  if (!Number.isFinite(size) || size < 0) {
+    throw new Error(`Invalid object size for ${key}`);
+  }
+  return size;
+}
+
 export async function putObjectBuffer(
   key: string,
   buf: Buffer,

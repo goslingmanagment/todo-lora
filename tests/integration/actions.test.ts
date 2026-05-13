@@ -9,6 +9,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
 import { ensureUser, getPool, startTestDb, truncateAll, type IntegrationDB } from './_helpers';
 
 const ACTOR_ID = '00000000-0000-0000-0000-0000000000aa';
@@ -35,6 +36,10 @@ const sanitizeState = vi.hoisted(() => ({
   calls: [] as string[],
   onSanitize: null as null | ((taskId: string, stagingKey: string) => void | Promise<void>),
   throwOnSanitize: null as Error | null,
+}));
+const storageState = vi.hoisted(() => ({
+  objectSize: 100,
+  throwOnObjectSize: null as Error | null,
 }));
 
 vi.mock('@/lib/auth/session', () => {
@@ -97,6 +102,10 @@ vi.mock('@/lib/storage/presign', () => ({
     expiresAt: Date.now() + 60_000,
   }),
   presignDownload: async () => 'http://127.0.0.1:9000/preview',
+  getObjectSize: async () => {
+    if (storageState.throwOnObjectSize) throw storageState.throwOnObjectSize;
+    return storageState.objectSize;
+  },
   deleteObject: async (key: string) => {
     deleteObjectCalls.push(key);
   },
@@ -142,6 +151,8 @@ beforeEach(async () => {
   sanitizeState.calls.length = 0;
   sanitizeState.onSanitize = null;
   sanitizeState.throwOnSanitize = null;
+  storageState.objectSize = 100;
+  storageState.throwOnObjectSize = null;
 });
 
 async function getTopicId(slug: string): Promise<string> {
@@ -1206,6 +1217,26 @@ describe('image attachment finalization', () => {
     });
 
     expect(r.ok).toBe(false);
+    expect(sanitizeState.calls).toHaveLength(0);
+    expect(deleteObjectCalls).toContain(stagingKey);
+  });
+
+  it('rejects oversized staged objects before sanitize and deletes staging', async () => {
+    const topicId = await getCustomsTopicId();
+    const c = await actions.createTaskAction(stubInput(topicId, 'pic too large'));
+    if (!c.ok) throw new Error('create failed');
+    const stagingKey = `staging/${c.data.id}/00000000-0000-4000-8000-000000000001.jpg`;
+    storageState.objectSize = MAX_IMAGE_BYTES + 1;
+
+    const r = await actions.finalizeImageAttachmentAction({
+      taskId: c.data.id,
+      stagingKey,
+      filename: 'a.jpg',
+      caption: null,
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe('Изображение больше 20 МБ');
     expect(sanitizeState.calls).toHaveLength(0);
     expect(deleteObjectCalls).toContain(stagingKey);
   });
