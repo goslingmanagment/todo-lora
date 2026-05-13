@@ -224,6 +224,18 @@ describe('updateTaskSchema', () => {
       expect(r.error.issues.some((i) => i.path.join('.') === 'durationMaxMinutes')).toBe(true);
     }
   });
+
+  it('rejects negative duration updates', () => {
+    const r = updateTaskSchema.safeParse({
+      id: validUuid,
+      expectedVersion,
+      durationMinMinutes: -1,
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join('.') === 'durationMinMinutes')).toBe(true);
+    }
+  });
 });
 
 describe('imageUploadIntentSchema', () => {

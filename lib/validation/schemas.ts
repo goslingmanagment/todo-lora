@@ -3,6 +3,7 @@
  */
 import { z } from 'zod';
 import { parseCountInput, parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
+import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Неверный формат даты' });
 
@@ -250,6 +251,20 @@ export const updateTaskSchema = z
         message: 'Максимум должен быть ≥ минимума',
       });
     }
+    if (data.durationMinMinutes != null && data.durationMinMinutes < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['durationMinMinutes'],
+        message: 'Не может быть отрицательной',
+      });
+    }
+    if (data.durationMaxMinutes != null && data.durationMaxMinutes < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['durationMaxMinutes'],
+        message: 'Не может быть отрицательной',
+      });
+    }
     if (data.photoCountMin != null && data.photoCountMin <= 0) {
       ctx.addIssue({
         code: 'custom',
@@ -347,7 +362,7 @@ export const imageUploadIntentSchema = z.object({
     .number()
     .int()
     .positive()
-    .max(20 * 1024 * 1024, {
+    .max(MAX_IMAGE_BYTES, {
       message: 'Изображение больше 20 МБ',
     }),
 });

@@ -1,3 +1,9 @@
+import {
+  MAX_COUNT_INPUT,
+  MAX_DOLLARS_INPUT,
+  MAX_MINUTES_INPUT,
+} from '@/lib/domain/limits';
+
 export type IntegerInputResult = { ok: true; value: number | null } | { ok: false; error: string };
 
 export const INTEGER_INPUT_ERROR = 'Должно быть целым числом';
@@ -6,15 +12,15 @@ export const INTEGER_RANGE_ERROR = 'Слишком большое число';
 const INTEGER_RE = /^-?\d+$/;
 
 export function parseDollarInput(value: unknown): IntegerInputResult {
-  return parseIntegerInput(value, { allowDollarPrefix: true });
+  return parseIntegerInput(value, { allowDollarPrefix: true, maxAbs: MAX_DOLLARS_INPUT });
 }
 
 export function parseMinuteInput(value: unknown): IntegerInputResult {
-  return parseIntegerInput(value, { allowDollarPrefix: false });
+  return parseIntegerInput(value, { allowDollarPrefix: false, maxAbs: MAX_MINUTES_INPUT });
 }
 
 export function parseCountInput(value: unknown): IntegerInputResult {
-  return parseIntegerInput(value, { allowDollarPrefix: false });
+  return parseIntegerInput(value, { allowDollarPrefix: false, maxAbs: MAX_COUNT_INPUT });
 }
 
 export function dollarsToCents(value: number | null | undefined): number | null {
@@ -27,7 +33,7 @@ export function minutesToSeconds(value: number | null | undefined): number | nul
 
 function parseIntegerInput(
   value: unknown,
-  options: { allowDollarPrefix: boolean },
+  options: { allowDollarPrefix: boolean; maxAbs: number },
 ): IntegerInputResult {
   if (value == null) return { ok: true, value: null };
 
@@ -35,7 +41,9 @@ function parseIntegerInput(
     if (!Number.isFinite(value) || !Number.isInteger(value)) {
       return { ok: false, error: INTEGER_INPUT_ERROR };
     }
-    if (!Number.isSafeInteger(value)) return { ok: false, error: INTEGER_RANGE_ERROR };
+    if (!Number.isSafeInteger(value) || Math.abs(value) > options.maxAbs) {
+      return { ok: false, error: INTEGER_RANGE_ERROR };
+    }
     return { ok: true, value };
   }
 
@@ -54,6 +62,8 @@ function parseIntegerInput(
   if (!INTEGER_RE.test(normalized)) return { ok: false, error: INTEGER_INPUT_ERROR };
 
   const parsed = Number(normalized);
-  if (!Number.isSafeInteger(parsed)) return { ok: false, error: INTEGER_RANGE_ERROR };
+  if (!Number.isSafeInteger(parsed) || Math.abs(parsed) > options.maxAbs) {
+    return { ok: false, error: INTEGER_RANGE_ERROR };
+  }
   return { ok: true, value: parsed };
 }

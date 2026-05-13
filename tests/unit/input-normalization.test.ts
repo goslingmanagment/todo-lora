@@ -6,6 +6,7 @@ import {
   parseDollarInput,
   parseMinuteInput,
 } from '@/lib/domain/inputs';
+import { MAX_COUNT_INPUT, MAX_DOLLARS_INPUT, MAX_MINUTES_INPUT } from '@/lib/domain/limits';
 import { createTaskSchema, updateTaskSchema } from '@/lib/validation/schemas';
 
 const topicId = '00000000-0000-0000-0000-000000000001';
@@ -29,6 +30,21 @@ describe('integer input normalization', () => {
     }
   });
 
+  it('rejects values that would overflow Postgres integer columns after conversion', () => {
+    expect(parseDollarInput(String(MAX_DOLLARS_INPUT + 1))).toEqual({
+      ok: false,
+      error: 'Слишком большое число',
+    });
+    expect(parseMinuteInput(String(MAX_MINUTES_INPUT + 1))).toEqual({
+      ok: false,
+      error: 'Слишком большое число',
+    });
+    expect(parseCountInput(String(MAX_COUNT_INPUT + 1))).toEqual({
+      ok: false,
+      error: 'Слишком большое число',
+    });
+  });
+
   it('uses the same normalization in create and update schemas', () => {
     const create = createTaskSchema.safeParse({
       type: 'custom',
@@ -47,6 +63,28 @@ describe('integer input normalization', () => {
       id: topicId,
       expectedVersion: 0,
       durationMinMinutes: '1.5',
+    });
+    expect(update.success).toBe(false);
+  });
+
+  it('rejects overflowing values in create and update schemas', () => {
+    const create = createTaskSchema.safeParse({
+      type: 'custom',
+      topicId,
+      title: 'Custom',
+      priority: 'medium',
+      deadlineOn: '2026-05-15',
+      buyerHandle: '@x',
+      platform: 'Fansly',
+      paymentModel: 'full',
+      amountDollars: String(MAX_DOLLARS_INPUT + 1),
+    });
+    expect(create.success).toBe(false);
+
+    const update = updateTaskSchema.safeParse({
+      id: topicId,
+      expectedVersion: 0,
+      durationMinMinutes: String(MAX_MINUTES_INPUT + 1),
     });
     expect(update.success).toBe(false);
   });
