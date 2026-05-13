@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: todo_lora
+      POSTGRES_USER: todo_lora
+      POSTGRES_PASSWORD: todo_lora_dev
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      # Postgres 18 expects the mount at /var/lib/postgresql (not /data).
+      # See: https://github.com/docker-library/postgres/pull/1259
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U todo_lora -d todo_lora']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: todo_lora
+      MINIO_ROOT_PASSWORD: todo_lora_dev_secret
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  minio-data:
