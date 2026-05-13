@@ -340,6 +340,130 @@ h3 {
   cursor: not-allowed;
 }
 
+/* View switcher — a native <details>-based disclosure dropdown.
+ * Trigger looks like a pill button; menu floats below, right-aligned. */
+.view-dropdown {
+  position: relative;
+  font-size: 0.85rem;
+}
+
+.view-dropdown > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.view-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.view-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-2);
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.view-dropdown-trigger:hover {
+  background-color: var(--color-card-hover);
+  border-color: var(--color-line-strong);
+}
+
+.view-dropdown[open] .view-dropdown-trigger {
+  background-color: var(--color-card-hover);
+  border-color: var(--color-line-strong);
+}
+
+.view-dropdown-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.view-dropdown-icon {
+  display: inline-flex;
+  color: var(--color-ink-3);
+}
+
+.view-dropdown-key {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-4);
+}
+
+.view-dropdown-value {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.view-dropdown-chev {
+  color: var(--color-ink-4);
+  display: inline-flex;
+  margin-left: 0.05rem;
+  transition: transform 150ms ease;
+}
+
+.view-dropdown[open] .view-dropdown-chev {
+  transform: rotate(180deg);
+}
+
+.view-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 220px;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  padding: 0.3rem;
+  box-shadow: 0 12px 28px -10px rgba(42, 37, 32, 0.22);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.view-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  color: var(--color-ink-3);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+.view-dropdown-item:hover {
+  background-color: var(--color-paper-2);
+  color: var(--color-ink);
+}
+
+.view-dropdown-item[aria-current='page'] {
+  background-color: var(--color-accent-tint);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.view-dropdown-item[aria-current='page'] .view-dropdown-icon {
+  color: var(--color-accent);
+}
+
+.view-dropdown-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;

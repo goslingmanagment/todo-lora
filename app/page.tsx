@@ -92,25 +92,7 @@ export default async function FeedPage({
         <h1 className="sr-only">Лента задач</h1>
         <div
           style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.6rem',
-            alignItems: 'center',
             marginTop: '0.4rem',
-          }}
-        >
-          <ViewSwitcher
-            active={view}
-            filter={filter}
-            urgent={urgent}
-            search={search}
-            topic={validatedTopic}
-          />
-        </div>
-
-        <div
-          style={{
-            marginTop: '0.7rem',
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
@@ -130,6 +112,15 @@ export default async function FeedPage({
               slugs={feed.sections.filter((s) => s.active.length > 0).map((s) => s.topic.slug)}
             />
           ) : null}
+          <div style={{ marginLeft: 'auto' }}>
+            <ViewSwitcher
+              active={view}
+              filter={filter}
+              urgent={urgent}
+              search={search}
+              topic={validatedTopic}
+            />
+          </div>
         </div>
 
         <form
