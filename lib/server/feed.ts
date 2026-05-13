@@ -5,7 +5,7 @@
  * Recently completed = §6.4 collapsed subsection.
  * Sort = §6.5.
  */
-import { and, desc, eq, gte, ilike, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { tasks, topics, type TaskType } from '@/drizzle/schema';
 import { addDaysIso, toMskDateString } from '@/lib/format/dates';
@@ -76,14 +76,19 @@ function filterPredicate(filter: FilterValue, todayIso: string) {
 }
 
 function searchPredicate(query: string) {
-  const pattern = `%${query}%`;
+  const pattern = `%${escapeLikePattern(query)}%`;
+  const escape = '\\';
   return or(
-    ilike(tasks.title, pattern),
-    ilike(tasks.description, pattern),
-    ilike(tasks.buyerHandle, pattern),
-    ilike(tasks.buyerDisplayName, pattern),
-    ilike(tasks.platform, pattern),
+    sql`${tasks.title} ILIKE ${pattern} ESCAPE ${escape}`,
+    sql`${tasks.description} ILIKE ${pattern} ESCAPE ${escape}`,
+    sql`${tasks.buyerHandle} ILIKE ${pattern} ESCAPE ${escape}`,
+    sql`${tasks.buyerDisplayName} ILIKE ${pattern} ESCAPE ${escape}`,
+    sql`${tasks.platform} ILIKE ${pattern} ESCAPE ${escape}`,
   );
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 export type FeedSection = {

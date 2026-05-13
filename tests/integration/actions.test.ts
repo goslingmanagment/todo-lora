@@ -898,6 +898,44 @@ describe('feed query', () => {
     expect(byBuyer.sections.flatMap((s) => s.active.map((t) => t.title))).toEqual(['buyer lookup']);
   });
 
+  it('treats percent and underscore search terms as literal characters', async () => {
+    const topicId = await getCustomsTopicId();
+    await actions.createTaskAction({
+      type: 'content_task',
+      topicId,
+      title: 'plain content task',
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      requesterId: ACTOR_ID,
+    });
+    await actions.createTaskAction({
+      type: 'content_task',
+      topicId,
+      title: 'literal 100% match',
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      requesterId: ACTOR_ID,
+    });
+    await actions.createTaskAction({
+      type: 'content_task',
+      topicId,
+      title: 'literal_under_score',
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      requesterId: ACTOR_ID,
+    });
+
+    const byPercent = await feed.getFeed('all', { search: '%' });
+    expect(byPercent.sections.flatMap((s) => s.active.map((t) => t.title)).sort()).toEqual([
+      'literal 100% match',
+    ]);
+
+    const byUnderscore = await feed.getFeed('all', { search: '_' });
+    expect(byUnderscore.sections.flatMap((s) => s.active.map((t) => t.title)).sort()).toEqual([
+      'literal_under_score',
+    ]);
+  });
+
   it('overdue filter only matches deadlines strictly before today', async () => {
     const { addDaysIso, toMskDateString } = await import('@/lib/format/dates');
     const topicId = await getCustomsTopicId();
