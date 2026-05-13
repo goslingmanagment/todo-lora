@@ -24,7 +24,6 @@ import {
   useImageUpload,
 } from '@/lib/client/useImageUpload';
 import { parseDollarInput } from '@/lib/domain/inputs';
-import { inferCustomTaskTitle } from '@/lib/domain/taskTitle';
 
 type TopicOption = { id: string; name: string; slug: string };
 type UserOption = { id: string; displayName: string };
@@ -551,21 +550,9 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
         clothingDescription,
         notesDescription,
       );
-      const inferredTitle =
-        trimmedTitle ||
-        inferCustomTaskTitle({
-          buyerHandle,
-          buyerDisplayName,
-          contentKind,
-          briefDescription,
-          clothingDescription,
-          durationText,
-          photoCountText,
-        });
       return {
         type: 'custom' as const,
         topicId,
-        title: inferredTitle,
         description: composedDescription,
         priority: priority ?? 'medium',
         deadlineOn,
@@ -624,24 +611,28 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
       <div className="task-form-grid">
         {/* MAIN PANE */}
         <div className="task-form-main">
-          {/* Title (typography-driven, no rectangle) */}
-          <label htmlFor="title" className="sr-only">
-            Заголовок
-          </label>
-          <input
-            id="title"
-            className="task-form-title-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={200}
-            placeholder="Заголовок задачи"
-            aria-invalid={errors.title ? 'true' : undefined}
-            aria-describedby={errors.title ? 'title-error' : undefined}
-          />
-          {errors.title ? (
-            <p id="title-error" role="alert" className="field-error" style={{ marginTop: 0 }}>
-              {errors.title}
-            </p>
+          {type === 'content_task' ? (
+            <>
+              {/* Title (typography-driven, no rectangle) */}
+              <label htmlFor="title" className="sr-only">
+                Заголовок
+              </label>
+              <input
+                id="title"
+                className="task-form-title-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={200}
+                placeholder="Заголовок задачи"
+                aria-invalid={errors.title ? 'true' : undefined}
+                aria-describedby={errors.title ? 'title-error' : undefined}
+              />
+              {errors.title ? (
+                <p id="title-error" role="alert" className="field-error" style={{ marginTop: 0 }}>
+                  {errors.title}
+                </p>
+              ) : null}
+            </>
           ) : null}
 
           {type === 'custom' ? (

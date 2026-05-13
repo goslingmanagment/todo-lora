@@ -74,7 +74,6 @@ export function EditPanel({
     const patch: Record<string, unknown> = {
       id: task.id,
       expectedVersion: task.version,
-      title: title.trim(),
       description: description.trim() ? description.trim() : null,
       topicId,
       priority,
@@ -133,6 +132,7 @@ export function EditPanel({
     }
     if (task.type === 'content_task') {
       Object.assign(patch, {
+        title: title.trim(),
         requesterId: requesterId || null,
         assigneeId: assigneeId || null,
       });
@@ -161,21 +161,23 @@ export function EditPanel({
         Редактировать
       </h2>
 
-      <div>
-        <label htmlFor="ed-title" className="label label-required">
-          Заголовок
-        </label>
-        <input
-          id="ed-title"
-          className="input"
-          aria-invalid={errors.title ? 'true' : undefined}
-          aria-describedby={errors.title ? 'ed-title-error' : undefined}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={200}
-        />
-        <FieldError id="ed-title-error" error={errors.title} />
-      </div>
+      {task.type === 'content_task' ? (
+        <div>
+          <label htmlFor="ed-title" className="label label-required">
+            Заголовок
+          </label>
+          <input
+            id="ed-title"
+            className="input"
+            aria-invalid={errors.title ? 'true' : undefined}
+            aria-describedby={errors.title ? 'ed-title-error' : undefined}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+          />
+          <FieldError id="ed-title-error" error={errors.title} />
+        </div>
+      ) : null}
 
       <div>
         <label htmlFor="ed-topic" className="label">

@@ -35,6 +35,28 @@ describe('createTaskSchema', () => {
     expect(r.success).toBe(true);
   });
 
+  it('accepts Custom payload without a title', () => {
+    const r = createTaskSchema.safeParse({
+      type: 'custom',
+      topicId: validUuid,
+      description: '🎥 Описание задания:\nкороткий сценарий',
+      priority: 'medium',
+      deadlineOn: '2026-05-15',
+      buyerHandle: '@x',
+      buyerDisplayName: null,
+      platform: 'Fansly',
+      contentKind: 'video',
+      paymentModel: 'full',
+      amountDollars: 200,
+      amountCollectedDollars: 0,
+      durationMinMinutes: 5,
+      durationMaxMinutes: 5,
+      agreementState: 'pending',
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.title).toBeUndefined();
+  });
+
   it('accepts valid Custom photo payload', () => {
     const r = createTaskSchema.safeParse({
       type: 'custom',

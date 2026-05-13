@@ -2,13 +2,18 @@ const MAX_TITLE_LENGTH = 200;
 const MAX_FOCUS_LENGTH = 64;
 
 type CustomTitleInput = {
-  buyerHandle: string;
+  buyerHandle?: string | null;
   buyerDisplayName?: string | null;
   contentKind?: 'video' | 'photo' | null;
+  description?: string | null;
   briefDescription?: string | null;
   clothingDescription?: string | null;
   durationText?: string | null;
   photoCountText?: string | null;
+  durationMinMinutes?: number | null;
+  durationMaxMinutes?: number | null;
+  photoCountMin?: number | null;
+  photoCountMax?: number | null;
 };
 
 function compactText(value: string | null | undefined): string {
@@ -34,7 +39,7 @@ function handleFromUrl(value: string): string | null {
   }
 }
 
-function buyerLabel(handle: string, displayName?: string | null): string {
+function buyerLabel(handle?: string | null, displayName?: string | null): string {
   const display = compactText(displayName);
   if (display) return display;
 
@@ -49,7 +54,7 @@ function buyerLabel(handle: string, displayName?: string | null): string {
 
 function stripLineNoise(value: string): string {
   return compactText(value)
-    .replace(/^[\s*"“”'«»*.,:;!?-]+/, '')
+    .replace(/^[\s📦🎥📸👗📝🗒🔥⏳*"“”'«»*.,:;!?-]+/u, '')
     .replace(/[\s*"“”'«»*]+$/, '');
 }
 
@@ -84,6 +89,19 @@ function durationLabel(value: string | null | undefined): string | null {
   return truncate(raw, 24);
 }
 
+function numericRangeLabel(
+  min: number | null | undefined,
+  max: number | null | undefined,
+  unit: string,
+): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) {
+    return min === max ? `${min} ${unit}` : `${min}-${max} ${unit}`;
+  }
+  if (min != null) return `${min} ${unit}`;
+  return `${max} ${unit}`;
+}
+
 function photoCountLabel(value: string | null | undefined): string | null {
   const raw = compactText(value);
   if (!raw) return null;
@@ -100,11 +118,17 @@ function photoCountLabel(value: string | null | undefined): string | null {
 
 export function inferCustomTaskTitle(input: CustomTitleInput): string {
   const buyer = buyerLabel(input.buyerHandle, input.buyerDisplayName);
-  const focus = firstUsefulLine(input.briefDescription, input.clothingDescription);
+  const focus = firstUsefulLine(
+    input.briefDescription,
+    input.description,
+    input.clothingDescription,
+  );
   const spec =
     input.contentKind === 'photo'
-      ? photoCountLabel(input.photoCountText)
-      : durationLabel(input.durationText);
+      ? (photoCountLabel(input.photoCountText) ??
+        numericRangeLabel(input.photoCountMin, input.photoCountMax, 'фото'))
+      : (durationLabel(input.durationText) ??
+        numericRangeLabel(input.durationMinMinutes, input.durationMaxMinutes, 'мин'));
 
   const focusPart = focus ? ` - ${focus}` : '';
   const specPart = spec ? `, ${spec}` : '';

@@ -26,6 +26,7 @@ import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
 import { allowedTargets, planTransition } from '@/lib/fsm/taskStatus';
 import { deleteObject } from '@/lib/storage/presign';
 import { dollarsToCents, minutesToSeconds } from '@/lib/domain/inputs';
+import { inferCustomTaskTitle } from '@/lib/domain/taskTitle';
 import { flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createTaskAction(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -54,14 +55,29 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
 
   const id = await db.transaction(async (tx) => {
     let inserted: { id: string; topicId: string } | undefined;
+    let createdTitle = '';
 
     if (data.type === 'custom') {
+      const title =
+        data.title && data.title.length > 0
+          ? data.title
+          : inferCustomTaskTitle({
+          buyerHandle: data.buyerHandle,
+          buyerDisplayName: data.buyerDisplayName,
+          contentKind: data.contentKind,
+          description: data.description,
+          durationMinMinutes: data.durationMinMinutes,
+          durationMaxMinutes: data.durationMaxMinutes,
+          photoCountMin: data.photoCountMin,
+          photoCountMax: data.photoCountMax,
+        });
+      createdTitle = title;
       const [row] = await tx
         .insert(tasks)
         .values({
           type: 'custom',
           topicId: data.topicId,
-          title: data.title,
+          title,
           description: data.description,
           priority: data.priority,
           deadlineOn: data.deadlineOn,
@@ -98,6 +114,7 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
           lastEditedBy: auth.user.id,
         })
         .returning({ id: tasks.id, topicId: tasks.topicId });
+      createdTitle = data.title;
       inserted = row;
     }
 
@@ -107,7 +124,7 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
       taskId: inserted.id,
       actorId: auth.user.id,
       eventType: 'created',
-      payload: { type: data.type, title: data.title },
+      payload: { type: data.type, title: createdTitle },
     });
 
     await tx
@@ -174,7 +191,6 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   const patch: Partial<typeof tasks.$inferInsert> = {
     lastEditedBy: auth.user.id,
   };
-  if (v.title !== undefined) patch.title = v.title;
   if (v.description !== undefined) patch.description = v.description;
   if (v.priority !== undefined) patch.priority = v.priority;
   if (v.deadlineOn !== undefined) patch.deadlineOn = v.deadlineOn;
@@ -199,8 +215,31 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
     if (v.photoCountMin !== undefined) patch.photoCountMin = v.photoCountMin;
     if (v.photoCountMax !== undefined) patch.photoCountMax = v.photoCountMax;
     if (v.agreementState !== undefined) patch.agreementState = v.agreementState;
+
+    const existingDurationMin =
+      existing.durationMinSeconds == null ? null : Math.round(existing.durationMinSeconds / 60);
+    const existingDurationMax =
+      existing.durationMaxSeconds == null ? null : Math.round(existing.durationMaxSeconds / 60);
+    const resolvedContentKind =
+      v.contentKind ??
+      existing.contentKind ??
+      (existing.photoCountMin != null || existing.photoCountMax != null ? 'photo' : 'video');
+    patch.title = inferCustomTaskTitle({
+      buyerHandle: v.buyerHandle !== undefined ? v.buyerHandle : existing.buyerHandle,
+      buyerDisplayName:
+        v.buyerDisplayName !== undefined ? v.buyerDisplayName : existing.buyerDisplayName,
+      contentKind: resolvedContentKind,
+      description: v.description !== undefined ? v.description : existing.description,
+      durationMinMinutes:
+        v.durationMinMinutes !== undefined ? v.durationMinMinutes : existingDurationMin,
+      durationMaxMinutes:
+        v.durationMaxMinutes !== undefined ? v.durationMaxMinutes : existingDurationMax,
+      photoCountMin: v.photoCountMin !== undefined ? v.photoCountMin : existing.photoCountMin,
+      photoCountMax: v.photoCountMax !== undefined ? v.photoCountMax : existing.photoCountMax,
+    });
   }
   if (existing.type === 'content_task') {
+    if (v.title !== undefined) patch.title = v.title;
     if (v.requesterId !== undefined && v.requesterId !== null) patch.requesterId = v.requesterId;
     if (v.assigneeId !== undefined) patch.assigneeId = v.assigneeId;
   }

@@ -12,6 +12,13 @@ const nonEmptyShort = z
   .min(1, { message: 'Заполните поле' })
   .max(200, { message: 'Слишком длинно' });
 
+const optionalShort = z
+  .string()
+  .trim()
+  .max(200, { message: 'Слишком длинно' })
+  .optional()
+  .nullable();
+
 const optionalText = z
   .string()
   .trim()
@@ -50,7 +57,7 @@ export const createCustomSchema = z
   .object({
     type: z.literal('custom'),
     topicId: z.uuid({ message: 'Выберите тему' }),
-    title: nonEmptyShort,
+    title: optionalShort,
     description: optionalText,
     priority: priority,
     deadlineOn: isoDate,

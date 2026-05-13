@@ -44,4 +44,30 @@ describe('inferCustomTaskTitle', () => {
       }),
     ).toBe('Custom для @photo_buyer - нижний ракурс и образ со скрина, 5-10 фото');
   });
+
+  it('infers from composed Telegram-style description and numeric duration', () => {
+    expect(
+      inferCustomTaskTitle({
+        buyerHandle: 'https://fansly.com/cive59',
+        buyerDisplayName: 'Andrew',
+        contentKind: 'video',
+        description:
+          '🎥 Описание задания:\n\nПервые 2 минуты - дикрейт\n\n👗 Одежда:\nлифчик со 2го фото',
+        durationMinMinutes: 20,
+        durationMaxMinutes: 20,
+      }),
+    ).toBe('Custom для Andrew - Первые 2 минуты - дикрейт, 20 мин');
+  });
+
+  it('infers photo count from numeric photo fields', () => {
+    expect(
+      inferCustomTaskTitle({
+        buyerHandle: 'https://fansly.com/JakeD9595/posts',
+        contentKind: 'photo',
+        description: '📸 Описание задания:\nкамера снимает снизу',
+        photoCountMin: 5,
+        photoCountMax: 10,
+      }),
+    ).toBe('Custom для @JakeD9595 - камера снимает снизу, 5-10 фото');
+  });
 });
