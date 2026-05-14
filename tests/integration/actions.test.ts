@@ -1075,6 +1075,36 @@ describe('realtime invalidation fanout', () => {
       client.release();
     }
   });
+
+  it('emits exactly one NOTIFY per createUrlAttachmentAction', async () => {
+    const topicId = await getCustomsTopicId();
+    const r = await actions.createTaskAction(stubInput(topicId, 'attachment notify'));
+    if (!r.ok) throw new Error('create failed');
+
+    const client = await getPool().connect();
+    try {
+      await client.query('LISTEN task_changes');
+      const payloads: string[] = [];
+      client.on('notification', (msg) => {
+        if (msg.payload) payloads.push(msg.payload);
+      });
+
+      const a = await actions.createUrlAttachmentAction({
+        taskId: r.data.id,
+        url: 'https://example.com/notify',
+      });
+      expect(a.ok).toBe(true);
+      await new Promise((res) => setTimeout(res, 250));
+
+      expect(payloads).toHaveLength(1);
+      const parsed = JSON.parse(payloads[0]!);
+      expect(parsed.taskId).toBe(r.data.id);
+      expect(parsed.topicId).toBe(topicId);
+      expect(parsed.reason).toBe('attachment_added');
+    } finally {
+      client.release();
+    }
+  });
 });
 
 describe('updateTaskAction', () => {

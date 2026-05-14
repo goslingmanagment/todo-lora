@@ -22,12 +22,12 @@ import {
   type UpdateTaskOutput,
   updateTaskSchema,
 } from '@/lib/validation/schemas';
-import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
 import { allowedTargets, planTransition } from '@/lib/fsm/taskStatus';
 import { deleteObject } from '@/lib/storage/presign';
 import { dollarsToCents, minutesToSeconds } from '@/lib/domain/inputs';
 import { inferCustomTaskTitle } from '@/lib/domain/taskTitle';
 import { isActiveTopicId } from '@/lib/server/lookups';
+import { notifyTaskMutation, recordTaskEventAndNotify } from '@/lib/server/taskMutation';
 import { flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createTaskAction(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -125,12 +125,20 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
 
     if (!inserted) throw new Error('Insert returned no row');
 
-    await tx.insert(taskEvents).values({
-      taskId: inserted.id,
-      actorId: auth.user.id,
-      eventType: 'created',
-      payload: { type: data.type, title: createdTitle },
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: inserted.id,
+        actorId: auth.user.id,
+        eventType: 'created',
+        payload: { type: data.type, title: createdTitle },
+      },
+      {
+        taskId: inserted.id,
+        topicId: inserted.topicId,
+        reason: 'created',
+      },
+    );
 
     await tx
       .insert(userPreferences)
@@ -148,12 +156,6 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
           updatedAt: sql`date_trunc('milliseconds', now())`,
         },
       });
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: inserted.id,
-      topicId: inserted.topicId,
-      reason: 'created',
-      at: Date.now(),
-    });
     return inserted.id;
   });
 
@@ -281,19 +283,20 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
 
     if (result.length === 0) return null;
 
-    await tx.insert(taskEvents).values({
-      taskId: v.id,
-      actorId: auth.user.id,
-      eventType: 'edited',
-      payload: { fields: Object.keys(patch).filter((k) => k !== 'lastEditedBy') },
-    });
-
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: v.id,
-      topicId: v.topicId ?? existing.topicId,
-      reason: 'edited',
-      at: Date.now(),
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: v.id,
+        actorId: auth.user.id,
+        eventType: 'edited',
+        payload: { fields: Object.keys(patch).filter((k) => k !== 'lastEditedBy') },
+      },
+      {
+        taskId: v.id,
+        topicId: v.topicId ?? existing.topicId,
+        reason: 'edited',
+      },
+    );
     return result[0] ?? null;
   });
 
@@ -350,24 +353,25 @@ export async function changeStatusAction(
 
     if (result.length === 0) return null;
 
-    await tx.insert(taskEvents).values({
-      taskId: id,
-      actorId: auth.user.id,
-      eventType:
-        plan.rule.kind === 'cancel'
-          ? 'cancelled'
-          : plan.rule.kind === 'reopen'
-            ? 'reopened'
-            : 'status_changed',
-      payload: { from: existing.status, to: newStatus, kind: plan.rule.kind },
-    });
-
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: id,
-      topicId: existing.topicId,
-      reason: 'status_changed',
-      at: Date.now(),
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: id,
+        actorId: auth.user.id,
+        eventType:
+          plan.rule.kind === 'cancel'
+            ? 'cancelled'
+            : plan.rule.kind === 'reopen'
+              ? 'reopened'
+              : 'status_changed',
+        payload: { from: existing.status, to: newStatus, kind: plan.rule.kind },
+      },
+      {
+        taskId: id,
+        topicId: existing.topicId,
+        reason: 'status_changed',
+      },
+    );
     return result[0] ?? null;
   });
 
@@ -405,19 +409,20 @@ export async function setAgreementStateAction(
 
     if (result.length === 0) return null;
 
-    await tx.insert(taskEvents).values({
-      taskId: id,
-      actorId: auth.user.id,
-      eventType: 'edited',
-      payload: { fields: ['agreementState'], to: agreementState },
-    });
-
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: id,
-      topicId: existing.topicId,
-      reason: 'agreement_changed',
-      at: Date.now(),
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: id,
+        actorId: auth.user.id,
+        eventType: 'edited',
+        payload: { fields: ['agreementState'], to: agreementState },
+      },
+      {
+        taskId: id,
+        topicId: existing.topicId,
+        reason: 'agreement_changed',
+      },
+    );
     return result[0] ?? null;
   });
 
@@ -457,11 +462,10 @@ export async function deleteTaskAction(input: unknown): Promise<ActionResult<{ i
       .returning({ id: tasks.id, topicId: tasks.topicId });
     const row = rows[0] ?? null;
     if (!row) return null;
-    await emitTaskInvalidationInTransaction(tx, {
+    await notifyTaskMutation(tx, {
       taskId: id,
       topicId: existing.topicId,
       reason: 'deleted',
-      at: Date.now(),
     });
     return row;
   });

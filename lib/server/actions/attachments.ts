@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { count, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { attachments, taskEvents, tasks } from '@/drizzle/schema';
+import { attachments, tasks } from '@/drizzle/schema';
 import { requireAuth } from '@/lib/auth/session';
 import {
   deleteAttachmentSchema,
@@ -11,10 +11,10 @@ import {
   imageUploadIntentSchema,
   urlAttachmentSchema,
 } from '@/lib/validation/schemas';
-import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
 import { createUploadPresign, deleteObject, getObjectSize } from '@/lib/storage/presign';
 import { sanitizeStagedImage } from '@/lib/storage/sanitize';
 import { ATTACHMENT_LIMIT, MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
+import { recordTaskEventAndNotify } from '@/lib/server/taskMutation';
 import { flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createUrlAttachmentAction(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -48,19 +48,21 @@ export async function createUrlAttachmentAction(input: unknown): Promise<ActionR
       })
       .returning({ id: attachments.id });
     if (!row) throw new Error('Insert returned no row');
-    await tx.insert(taskEvents).values({
-      taskId: v.taskId,
-      actorId: auth.user.id,
-      eventType: 'attachment_added',
-      payload: { kind: 'url' },
-    });
     await tx.update(tasks).set({ lastEditedBy: auth.user.id }).where(eq(tasks.id, v.taskId));
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: v.taskId,
-      topicId: task.topicId,
-      reason: 'attachment_added',
-      at: Date.now(),
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: v.taskId,
+        actorId: auth.user.id,
+        eventType: 'attachment_added',
+        payload: { kind: 'url' },
+      },
+      {
+        taskId: v.taskId,
+        topicId: task.topicId,
+        reason: 'attachment_added',
+      },
+    );
     return row.id;
   });
   if (!id) return { ok: false, error: 'Достигнут предел в 10 вложений' };
@@ -176,19 +178,21 @@ export async function finalizeImageAttachmentAction(
         })
         .returning({ id: attachments.id });
       if (!row) throw new Error('Insert returned no row');
-      await tx.insert(taskEvents).values({
-        taskId,
-        actorId: auth.user.id,
-        eventType: 'attachment_added',
-        payload: { kind: 'image', mimeType: sanitized.mimeType, sizeBytes: sanitized.sizeBytes },
-      });
       await tx.update(tasks).set({ lastEditedBy: auth.user.id }).where(eq(tasks.id, taskId));
-      await emitTaskInvalidationInTransaction(tx, {
-        taskId,
-        topicId: task.topicId,
-        reason: 'attachment_added',
-        at: Date.now(),
-      });
+      await recordTaskEventAndNotify(
+        tx,
+        {
+          taskId,
+          actorId: auth.user.id,
+          eventType: 'attachment_added',
+          payload: { kind: 'image', mimeType: sanitized.mimeType, sizeBytes: sanitized.sizeBytes },
+        },
+        {
+          taskId,
+          topicId: task.topicId,
+          reason: 'attachment_added',
+        },
+      );
       return row.id;
     });
 
@@ -235,24 +239,26 @@ export async function deleteAttachmentAction(input: unknown): Promise<ActionResu
       });
     if (!found) return null;
 
-    await tx.insert(taskEvents).values({
-      taskId: found.taskId,
-      actorId: auth.user.id,
-      eventType: 'attachment_removed',
-      payload: { kind: found.kind },
-    });
     await tx.update(tasks).set({ lastEditedBy: auth.user.id }).where(eq(tasks.id, found.taskId));
     const [task] = await tx
       .select({ topicId: tasks.topicId })
       .from(tasks)
       .where(eq(tasks.id, found.taskId))
       .limit(1);
-    await emitTaskInvalidationInTransaction(tx, {
-      taskId: found.taskId,
-      topicId: task?.topicId ?? null,
-      reason: 'attachment_removed',
-      at: Date.now(),
-    });
+    await recordTaskEventAndNotify(
+      tx,
+      {
+        taskId: found.taskId,
+        actorId: auth.user.id,
+        eventType: 'attachment_removed',
+        payload: { kind: found.kind },
+      },
+      {
+        taskId: found.taskId,
+        topicId: task?.topicId ?? null,
+        reason: 'attachment_removed',
+      },
+    );
     return found;
   });
 

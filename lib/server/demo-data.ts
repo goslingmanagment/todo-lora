@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { taskEvents, tasks, topics } from '@/drizzle/schema';
 import { addDaysIso, toMskDateString } from '@/lib/format/dates';
-import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
+import { notifyTaskMutation } from '@/lib/server/taskMutation';
 
 export const DEMO_DATASET = 'telegram-export-2026-05-small';
 
@@ -257,11 +257,10 @@ export async function clearDemoTasks(): Promise<{ deleted: number; topicIds: str
       .where(inArray(tasks.id, ids))
       .returning({ id: tasks.id, topicId: tasks.topicId });
     if (rows.length > 0) {
-      await emitTaskInvalidationInTransaction(tx, {
+      await notifyTaskMutation(tx, {
         taskId: 'demo-data',
         topicId: null,
         reason: 'demo_cleared',
-        at: Date.now(),
       });
     }
     return rows;
@@ -349,11 +348,10 @@ export async function seedDemoTasks(
     }
 
     if (rows.length > 0) {
-      await emitTaskInvalidationInTransaction(tx, {
+      await notifyTaskMutation(tx, {
         taskId: 'demo-data',
         topicId: null,
         reason: 'demo_seeded',
-        at: Date.now(),
       });
     }
 
