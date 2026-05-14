@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { TaskCard } from '@/components/TaskCard';
 import type { FeedResult } from '@/lib/server/feed';
 import type { FilterValue } from '@/lib/validation/schemas';
+import { buildFeedHref } from '@/lib/feed/url';
 
 export function SidebarFeed({
   feed,
@@ -40,15 +41,8 @@ export function SidebarFeed({
     feed.sections.find((s) => s.active.length > 0) ?? feed.sections[0];
   const activeSection = requested ?? sectionForHighlight ?? defaultSection;
 
-  const buildHref = (slug: string) => {
-    const p = new URLSearchParams();
-    p.set('view', 'sidebar');
-    p.set('topic', slug);
-    if (filter !== 'all') p.set('filter', filter);
-    if (urgent) p.set('urgent', '1');
-    if (search) p.set('q', search);
-    return `/?${p.toString()}`;
-  };
+  const buildHref = (slug: string) =>
+    buildFeedHref({ view: 'sidebar', topic: slug, filter, urgent, search });
 
   return (
     <div className="sidebar-grid">

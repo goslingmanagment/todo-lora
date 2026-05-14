@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { FilterValue, ViewValue } from '@/lib/validation/schemas';
+import { buildFeedHref } from '@/lib/feed/url';
 
 const FILTERS: Array<{ key: FilterValue; label: string }> = [
   { key: 'all', label: 'Все' },
@@ -35,31 +36,12 @@ export function FilterChips({
     : k === 'today' ? totals.todayDue
     : totals.thisWeekDue;
 
-  const baseParams = () => {
-    const p = new URLSearchParams();
-    if (view !== 'grid') p.set('view', view);
-    if (view === 'sidebar' && topic) p.set('topic', topic);
-    return p;
-  };
-
   // Deadline chip URLs preserve the urgent triage state (and the current view
   // / topic), so the two dimensions combine orthogonally (per P1.4.1 acceptance).
-  const buildDeadlineHref = (k: FilterValue) => {
-    const params = baseParams();
-    if (k !== 'all') params.set('filter', k);
-    if (urgent) params.set('urgent', '1');
-    if (search) params.set('q', search);
-    const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
-  };
-  const buildUrgentHref = () => {
-    const params = baseParams();
-    if (active !== 'all') params.set('filter', active);
-    if (!urgent) params.set('urgent', '1');
-    if (search) params.set('q', search);
-    const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
-  };
+  const buildDeadlineHref = (k: FilterValue) =>
+    buildFeedHref({ view, topic, filter: k, urgent, search });
+  const buildUrgentHref = () =>
+    buildFeedHref({ view, topic, filter: active, urgent: !urgent, search });
 
   // When the user is searching, the totals (active/overdue/today/week/urgent)
   // are computed over the full feed and no longer reflect what the user sees

@@ -15,6 +15,7 @@ import { CalendarFeed } from '@/components/views/CalendarFeed';
 import type { FilterValue, ViewValue } from '@/lib/validation/schemas';
 import { filterSchema, viewSchema } from '@/lib/validation/schemas';
 import { getDemoTaskCount } from '@/lib/server/demo-data';
+import { buildFeedHref } from '@/lib/feed/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,7 +155,7 @@ export default async function FeedPage({
           </button>
           {search ? (
             <a
-              href={buildWithoutSearchHref(view, filter, urgent, validatedTopic)}
+              href={buildFeedHref({ view, filter, urgent, topic: validatedTopic })}
               className="back-link"
             >
               Сбросить
@@ -171,7 +172,7 @@ export default async function FeedPage({
             </p>
             {search ? (
               <a
-                href={buildWithoutSearchHref(view, filter, urgent, validatedTopic)}
+                href={buildFeedHref({ view, filter, urgent, topic: validatedTopic })}
                 className="btn"
                 style={{ width: 'fit-content' }}
               >
@@ -239,19 +240,4 @@ export default async function FeedPage({
       </main>
     </>
   );
-}
-
-function buildWithoutSearchHref(
-  view: ViewValue,
-  filter: FilterValue,
-  urgent: boolean,
-  topicSlug?: string,
-): string {
-  const params = new URLSearchParams();
-  if (view !== 'grid') params.set('view', view);
-  if (view === 'sidebar' && topicSlug) params.set('topic', topicSlug);
-  if (filter !== 'all') params.set('filter', filter);
-  if (urgent) params.set('urgent', '1');
-  const qs = params.toString();
-  return qs ? `/?${qs}` : '/';
 }

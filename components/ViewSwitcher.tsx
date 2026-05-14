@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { FilterValue, ViewValue } from '@/lib/validation/schemas';
+import { buildFeedHref } from '@/lib/feed/url';
 
 const ICON_PROPS = {
   width: 14,
@@ -71,16 +72,8 @@ export function ViewSwitcher({
   search?: string;
   topic?: string;
 }) {
-  const buildHref = (next: ViewValue) => {
-    const params = new URLSearchParams();
-    if (next !== 'grid') params.set('view', next);
-    if (filter !== 'all') params.set('filter', filter);
-    if (urgent) params.set('urgent', '1');
-    if (search) params.set('q', search);
-    if (next === 'sidebar' && topic) params.set('topic', topic);
-    const qs = params.toString();
-    return qs ? `/?${qs}` : '/';
-  };
+  const buildHref = (next: ViewValue) =>
+    buildFeedHref({ view: next, filter, urgent, search, topic });
 
   const activeLabel = VIEWS.find((v) => v.key === active)?.label ?? '2 колонки';
   const ref = useRef<HTMLDetailsElement>(null);
