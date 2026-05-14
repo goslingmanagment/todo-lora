@@ -64,6 +64,7 @@ export const tasks = pgTable(
   },
   (t) => ({
     feedIdx: index('tasks_topic_status_idx').on(t.topicId, t.status),
+    updatedAtIdx: index('tasks_updated_at_idx').on(t.updatedAt.desc()),
     deadlineActiveIdx: index('tasks_active_deadline_idx')
       .on(t.deadlineOn)
       .where(
@@ -195,7 +196,7 @@ export const taskEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    taskCreatedIdx: index('task_events_task_created_idx').on(t.taskId, t.createdAt),
+    taskCreatedIdx: index('task_events_task_created_idx').on(t.taskId, t.createdAt.desc()),
   }),
 );
 
