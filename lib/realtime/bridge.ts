@@ -42,18 +42,24 @@ export class TaskChangeBridge {
     this.connecting = (async () => {
       const cfg = getConfig();
       const c = new Client({ connectionString: cfg.databaseUrl });
-      c.on('error', () => this.handleDisconnect());
-      c.on('end', () => this.handleDisconnect());
-      await c.connect();
-      c.on('notification', (msg) => {
-        if (msg.channel === 'task_changes' && msg.payload) {
-          this.bus.emit('task', msg.payload);
-        }
-      });
-      await c.query('LISTEN task_changes');
-      this.client = c;
-      // Successful connect — reset backoff for the next outage.
-      this.reconnectDelayMs = RECONNECT_INITIAL_MS;
+      try {
+        c.on('error', () => this.handleDisconnect());
+        c.on('end', () => this.handleDisconnect());
+        await c.connect();
+        c.on('notification', (msg) => {
+          if (msg.channel === 'task_changes' && msg.payload) {
+            this.bus.emit('task', msg.payload);
+          }
+        });
+        await c.query('LISTEN task_changes');
+        this.client = c;
+        // Successful connect — reset backoff for the next outage.
+        this.reconnectDelayMs = RECONNECT_INITIAL_MS;
+      } catch (err) {
+        c.removeAllListeners();
+        await c.end().catch(() => {});
+        throw err;
+      }
     })();
 
     try {

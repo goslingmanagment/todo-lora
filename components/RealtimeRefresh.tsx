@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 type TaskEventPayload = {
   taskId?: string;
@@ -37,7 +37,7 @@ export function RealtimeRefresh({
     taskIdRef.current = taskId;
   }, [taskId]);
 
-  const trigger = () => {
+  const trigger = useCallback(() => {
     const now = Date.now();
     const sinceLast = now - lastRefresh.current;
     if (sinceLast >= debounceMs) {
@@ -51,12 +51,13 @@ export function RealtimeRefresh({
       lastRefresh.current = Date.now();
       router.refresh();
     }, debounceMs - sinceLast);
-  };
+  }, [debounceMs, router]);
 
   useEffect(() => {
     let es: EventSource | null = null;
     let backoff = 1000;
     let cancelled = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const onTask = (e: MessageEvent) => {
       const scopeId = taskIdRef.current;
@@ -85,9 +86,12 @@ export function RealtimeRefresh({
       es.addEventListener('error', () => {
         es?.close();
         if (cancelled) return;
+        if (reconnectTimer) return;
         const wait = Math.min(backoff, 15_000);
         backoff = Math.min(backoff * 2, 15_000);
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          if (cancelled) return;
           // Reconnect with a defensive refresh — we may have missed events.
           trigger();
           connect();
@@ -109,10 +113,10 @@ export function RealtimeRefresh({
       es?.close();
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (pending.current) clearTimeout(pending.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [trigger]);
 
   return null;
 }

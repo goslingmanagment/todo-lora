@@ -1,23 +1,11 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import {
-  createImageUploadIntentAction,
-  finalizeImageAttachmentAction,
-} from '@/lib/server/actions';
+import { createImageUploadIntentAction, finalizeImageAttachmentAction } from '@/lib/server/actions';
 import { MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
+import { normalizeImageMime } from '@/lib/domain/imageMime';
 
 export type UploadPhase = 'idle' | 'uploading' | 'processing';
-
-export function normalizeImageMime(file: File): string {
-  if (file.type) return file.type;
-  const lower = file.name.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.heic')) return 'image/heic';
-  if (lower.endsWith('.heif')) return 'image/heif';
-  return 'image/jpeg';
-}
 
 export function useImageUpload() {
   const [phase, setPhase] = useState<UploadPhase>('idle');
