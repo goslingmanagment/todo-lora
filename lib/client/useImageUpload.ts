@@ -5,19 +5,9 @@ import {
   createImageUploadIntentAction,
   finalizeImageAttachmentAction,
 } from '@/lib/server/actions';
-import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
+import { MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 
 export type UploadPhase = 'idle' | 'uploading' | 'processing';
-
-export const ACCEPTED_IMAGE_MIMES = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
-export const IMAGE_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-]);
-export { MAX_IMAGE_BYTES };
 
 export function normalizeImageMime(file: File): string {
   if (file.type) return file.type;

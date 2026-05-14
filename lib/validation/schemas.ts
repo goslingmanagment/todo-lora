@@ -3,7 +3,7 @@
  */
 import { z } from 'zod';
 import { parseCountInput, parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
-import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
+import { IMAGE_MIME_VALUES, MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Неверный формат даты' });
 
@@ -357,7 +357,7 @@ export type UrlAttachmentInput = z.input<typeof urlAttachmentSchema>;
 export const imageUploadIntentSchema = z.object({
   taskId: z.uuid(),
   filename: z.string().trim().min(1).max(255),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']),
+    mimeType: z.enum(IMAGE_MIME_VALUES),
   sizeBytes: z
     .number()
     .int()

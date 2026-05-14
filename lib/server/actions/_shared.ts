@@ -19,8 +19,6 @@ export type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; code?: ActionErrorCode; fieldErrors?: Record<string, string> };
 
-export const ATTACHMENT_LIMIT = 10;
-
 export function flattenZodErrors(err: unknown): Record<string, string> {
   if (
     err &&

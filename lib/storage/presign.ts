@@ -10,17 +10,10 @@
 import { randomUUID } from 'node:crypto';
 import { getStorageClient, STAGING_PREFIX, ATTACHMENT_PREFIX } from './client';
 import { getConfig } from '@/lib/env';
+import { IMAGE_MIME_TYPES } from '@/lib/domain/attachmentPolicy';
 
 const UPLOAD_TTL_SECONDS = 60 * 5;
 const DOWNLOAD_TTL_SECONDS = 60 * 10;
-
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-]);
 
 export type PresignedUpload = {
   url: string;
@@ -52,7 +45,7 @@ export async function createUploadPresign(
   filename: string,
   mimeType: string,
 ): Promise<PresignedUpload> {
-  if (!ALLOWED_MIME.has(mimeType)) {
+  if (!IMAGE_MIME_TYPES.has(mimeType)) {
     throw new Error(`Unsupported MIME type: ${mimeType}`);
   }
   const cfg = getConfig().minio;

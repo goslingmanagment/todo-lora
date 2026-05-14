@@ -14,8 +14,8 @@ import {
 import { emitTaskInvalidationInTransaction } from '@/lib/realtime/notify';
 import { createUploadPresign, deleteObject, getObjectSize } from '@/lib/storage/presign';
 import { sanitizeStagedImage } from '@/lib/storage/sanitize';
-import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
-import { ATTACHMENT_LIMIT, flattenZodErrors, type ActionResult } from './_shared';
+import { ATTACHMENT_LIMIT, MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
+import { flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createUrlAttachmentAction(input: unknown): Promise<ActionResult<{ id: string }>> {
   const auth = await requireAuth().catch(() => null);

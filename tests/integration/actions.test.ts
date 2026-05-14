@@ -9,7 +9,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { MAX_IMAGE_BYTES } from '@/lib/domain/limits';
+import { MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 import { ensureUser, getPool, startTestDb, truncateAll, type IntegrationDB } from './_helpers';
 
 const ACTOR_ID = '00000000-0000-0000-0000-0000000000aa';

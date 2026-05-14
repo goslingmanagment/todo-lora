@@ -3,7 +3,8 @@
 import { useRef, useTransition } from 'react';
 import { deleteAttachmentAction } from '@/lib/server/actions';
 import { showToast } from '@/components/Toaster';
-import { ACCEPTED_IMAGE_MIMES, MAX_IMAGE_BYTES, useImageUpload } from '@/lib/client/useImageUpload';
+import { useImageUpload } from '@/lib/client/useImageUpload';
+import { ACCEPTED_IMAGE_MIMES, MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 import type { AttachmentDto } from './_types';
 
 export function ImageAttachments({

@@ -17,12 +17,15 @@ import { createTaskAction, createUrlAttachmentAction } from '@/lib/server/action
 import { showToast } from '@/components/Toaster';
 import type { NewTaskPreferences } from '@/lib/server/preferences';
 import {
-  ACCEPTED_IMAGE_MIMES,
-  IMAGE_MIME_TYPES,
-  MAX_IMAGE_BYTES,
   normalizeImageMime,
   useImageUpload,
 } from '@/lib/client/useImageUpload';
+import {
+  ACCEPTED_IMAGE_MIMES,
+  ATTACHMENT_LIMIT as MAX_ATTACHMENTS,
+  IMAGE_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+} from '@/lib/domain/attachmentPolicy';
 import { parseDollarInput } from '@/lib/domain/inputs';
 
 type TopicOption = { id: string; name: string; slug: string };
@@ -41,8 +44,6 @@ type PayStatus = 'full' | 'half' | 'partial75' | 'custom';
 type CustomContentKind = 'video' | 'photo';
 
 type UrlAttachmentDraft = { id: string; url: string; caption: string };
-
-const MAX_ATTACHMENTS = 10;
 
 const TYPE_TABS: Array<{ value: TabKey; label: string }> = [
   { value: 'custom', label: 'Custom' },
