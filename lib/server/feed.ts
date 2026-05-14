@@ -5,7 +5,7 @@
  * Recently completed = §6.4 collapsed subsection.
  * Sort = §6.5.
  */
-import { and, desc, eq, gte, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { tasks, topics, type TaskType } from '@/drizzle/schema';
 import { addDaysIso, toMskDateString } from '@/lib/format/dates';
@@ -137,9 +137,11 @@ export async function getFeed(
     .from(topics)
     .where(sql`${topics.archivedAt} IS NULL`)
     .orderBy(topics.sortOrder);
+  const activeTopicIds = topicRows.map((topic) => topic.id);
 
   // Active tasks under filter (deadline) and any triage chips (urgent).
   const wherePieces = [activePredicate()];
+  if (activeTopicIds.length > 0) wherePieces.push(inArray(tasks.topicId, activeTopicIds));
   const deadlineWhere = filterPredicate(filter, todayIso);
   if (deadlineWhere) wherePieces.push(deadlineWhere);
   if (urgent) wherePieces.push(eq(tasks.priority, 'high'));
@@ -166,6 +168,7 @@ export async function getFeed(
     ),
   ];
   if (search) recentPieces.push(searchPredicate(search));
+  if (activeTopicIds.length > 0) recentPieces.push(inArray(tasks.topicId, activeTopicIds));
   const recentlyCompleted = filter === 'all'
     ? await db
         .select()
@@ -216,7 +219,8 @@ export async function getHeaderMetrics(todayIso: string = toMskDateString()): Pr
       urgent: sql<number>`(count(*) FILTER (WHERE ${tasks.priority} = 'high'))::integer`,
     })
     .from(tasks)
-    .where(activePredicate());
+    .innerJoin(topics, eq(tasks.topicId, topics.id))
+    .where(and(activePredicate(), isNull(topics.archivedAt)));
 
   return {
     outstandingCustomCents: row?.outstandingCustomCents ?? 0,

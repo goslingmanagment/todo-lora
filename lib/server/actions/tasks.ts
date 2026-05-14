@@ -27,6 +27,7 @@ import { allowedTargets, planTransition } from '@/lib/fsm/taskStatus';
 import { deleteObject } from '@/lib/storage/presign';
 import { dollarsToCents, minutesToSeconds } from '@/lib/domain/inputs';
 import { inferCustomTaskTitle } from '@/lib/domain/taskTitle';
+import { isActiveTopicId } from '@/lib/server/lookups';
 import { flattenZodErrors, type ActionResult } from './_shared';
 
 export async function createTaskAction(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -43,6 +44,10 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
   }
 
   const data = parsed.data;
+  const topicErrors = await validateWritableTopic(data.topicId);
+  if (topicErrors) {
+    return { ok: false, error: 'Проверьте поля формы', fieldErrors: topicErrors };
+  }
   if (data.type === 'content_task') {
     const userErrors = await validateActiveContentUsers({
       requesterId: data.requesterId,
@@ -174,6 +179,12 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   const semanticErrors = validateUpdateAgainstExisting(v, existing);
   if (semanticErrors) {
     return { ok: false, error: 'Проверьте поля формы', fieldErrors: semanticErrors };
+  }
+  if (v.topicId !== undefined) {
+    const topicErrors = await validateWritableTopic(v.topicId, existing);
+    if (topicErrors) {
+      return { ok: false, error: 'Проверьте поля формы', fieldErrors: topicErrors };
+    }
   }
   if (existing.type === 'content_task') {
     const userErrors = await validateActiveContentUsers(
@@ -570,6 +581,15 @@ function validateUpdateAgainstExisting(
   }
 
   return Object.keys(errors).length > 0 ? errors : null;
+}
+
+async function validateWritableTopic(
+  topicId: string,
+  existing?: Task,
+): Promise<Record<string, string> | null> {
+  if (existing && topicId === existing.topicId) return null;
+  if (await isActiveTopicId(topicId)) return null;
+  return { topicId: 'Выберите активную тему' };
 }
 
 async function validateActiveContentUsers(

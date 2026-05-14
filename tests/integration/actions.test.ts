@@ -164,6 +164,19 @@ async function getCustomsTopicId(): Promise<string> {
   return getTopicId('customs');
 }
 
+async function createArchivedTopic(slug: string): Promise<string> {
+  const { rows } = await getPool().query(
+    `
+      INSERT INTO topics (slug, name, sort_order, archived_at)
+      VALUES ($1, $2, 1000, now())
+      ON CONFLICT (slug) DO UPDATE SET archived_at = now()
+      RETURNING id
+    `,
+    [slug, slug],
+  );
+  return rows[0].id as string;
+}
+
 async function reloadTask(id: string) {
   const rows = await db.select().from(schema.tasks).where(eq(schema.tasks.id, id));
   if (!rows[0]) throw new Error(`Task ${id} not found`);
@@ -254,6 +267,17 @@ describe('createTaskAction', () => {
     }
   });
 
+  it('rejects new tasks for archived topics', async () => {
+    const topicId = await createArchivedTopic('archived-create-action');
+
+    const result = await actions.createTaskAction(stubInput(topicId, 'archived topic'));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.fieldErrors?.topicId).toBe('Выберите активную тему');
+    }
+  });
+
   it('stores server-side defaults per user and task type', async () => {
     const customsTopicId = await getCustomsTopicId();
     const setsTopicId = await getTopicId('sets');
@@ -325,6 +349,16 @@ describe('shared lookup helpers', () => {
     expect(activeUsers.some((user) => user.id === ACTOR_ID)).toBe(true);
     expect(activeUsers.some((user) => user.id === OTHER_ID)).toBe(false);
     expect(allUsers.some((user) => user.id === OTHER_ID)).toBe(true);
+  });
+
+  it('includes the current archived topic when building edit options', async () => {
+    const topicId = await createArchivedTopic('archived-edit-options');
+
+    const activeTopics = await lookups.listActiveTopics();
+    const editableTopics = await lookups.listEditableTopics(topicId);
+
+    expect(activeTopics.some((topic) => topic.id === topicId)).toBe(false);
+    expect(editableTopics[0]?.id).toBe(topicId);
   });
 });
 
@@ -750,6 +784,25 @@ describe('feed query', () => {
     expect(result.outstandingCustomCents).toBe(15000);
   });
 
+  it('excludes archived-topic tasks from feed metrics', async () => {
+    const topicId = await createArchivedTopic('archived-feed-metrics');
+    await db.insert(schema.tasks).values({
+      type: 'content_task',
+      topicId,
+      title: 'hidden by archived topic',
+      priority: 'high',
+      deadlineOn: '2026-05-15',
+      createdBy: ACTOR_ID,
+      requesterId: ACTOR_ID,
+    });
+
+    const result = await feed.getFeed('all');
+
+    expect(result.sections.flatMap((s) => s.active)).toHaveLength(0);
+    expect(result.totals.active).toBe(0);
+    expect(result.totals.urgent).toBe(0);
+  });
+
   it('hides delivered customs from the active feed but keeps them in recently completed', async () => {
     const topicId = await getCustomsTopicId();
     const c = await actions.createTaskAction({
@@ -1137,6 +1190,45 @@ describe('updateTaskAction', () => {
     if (!rejected.ok) {
       expect(rejected.fieldErrors?.assigneeId).toBe('Выберите активного пользователя');
     }
+  });
+
+  it('rejects moving a task to an archived topic but preserves the current archived topic', async () => {
+    const activeTopicId = await getCustomsTopicId();
+    const archivedTopicId = await createArchivedTopic('archived-update-action');
+
+    const created = await actions.createTaskAction(stubInput(activeTopicId, 'active topic task'));
+    if (!created.ok) throw new Error('create failed');
+    const activeSnapshot = await reloadTask(created.data.id);
+
+    const moveToArchived = await actions.updateTaskAction({
+      id: created.data.id,
+      expectedVersion: activeSnapshot.version,
+      topicId: archivedTopicId,
+    });
+    expect(moveToArchived.ok).toBe(false);
+    if (!moveToArchived.ok) {
+      expect(moveToArchived.fieldErrors?.topicId).toBe('Выберите активную тему');
+    }
+
+    const [existingArchived] = await db
+      .insert(schema.tasks)
+      .values({
+        type: 'content_task',
+        topicId: archivedTopicId,
+        title: 'already archived topic',
+        createdBy: ACTOR_ID,
+        requesterId: ACTOR_ID,
+      })
+      .returning();
+    if (!existingArchived) throw new Error('raw insert failed');
+
+    const preserveArchived = await actions.updateTaskAction({
+      id: existingArchived.id,
+      expectedVersion: existingArchived.version,
+      title: 'edited without topic move',
+      topicId: archivedTopicId,
+    });
+    expect(preserveArchived.ok).toBe(true);
   });
 
   it('clears requester when the edit form sends requesterId null', async () => {

@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { attachments, taskEvents, tasks, topics, users } from '@/drizzle/schema';
 import { db } from '@/lib/db/client';
 import { presignDownload } from '@/lib/storage/presign';
-import { listActiveTopics, listActiveUserOptions, listAllUserOptions } from './lookups';
+import { listActiveUserOptions, listAllUserOptions, listEditableTopics } from './lookups';
 
 export async function getTaskDetailData(id: string) {
   const task = await db.query.tasks.findFirst({ where: eq(tasks.id, id) });
@@ -24,7 +24,7 @@ export async function getTaskDetailData(id: string) {
       .where(eq(taskEvents.taskId, id))
       .orderBy(desc(taskEvents.createdAt))
       .limit(50),
-    listActiveTopics(),
+    listEditableTopics(task.topicId),
     listAllUserOptions(),
     listActiveUserOptions(),
   ]);
