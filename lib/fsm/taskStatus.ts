@@ -9,6 +9,7 @@
  *   - reopen `cancelled → draft`
  */
 import type { AgreementState, TaskStatus, TaskType } from '@/drizzle/schema/enums';
+import { isTaskActive } from '@/lib/domain/taskVisibility';
 
 export type TransitionRule = {
   from: TaskStatus;
@@ -82,15 +83,7 @@ export function isActive(
     agreementState?: AgreementState | null;
   } = {},
 ): boolean {
-  if (status === 'cancelled') return false;
-  if (type === 'custom') {
-    if (status !== 'delivered') return true;
-    const total = customState.amountCents ?? 0;
-    const collected = customState.amountCollectedCents ?? 0;
-    return customState.agreementState !== 'confirmed' || collected < total;
-  }
-  if (status === 'done') return false;
-  return true;
+  return isTaskActive({ type, status, ...customState });
 }
 
 export const STATUS_LABELS_RU: Record<TaskStatus, string> = {

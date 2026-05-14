@@ -5,10 +5,11 @@
  * Recently completed = §6.4 collapsed subsection.
  * Sort = §6.5.
  */
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { tasks, topics, type TaskType } from '@/drizzle/schema';
 import { addDaysIso, toMskDateString } from '@/lib/format/dates';
+import { activeTaskPredicate, recentlyCompletedTaskPredicate } from '@/lib/server/taskVisibility';
 import type { FilterValue } from '@/lib/validation/schemas';
 
 export type TaskRow = typeof tasks.$inferSelect;
@@ -24,40 +25,6 @@ const orderByActive = sql`
   ${tasks.deadlineOn} ASC NULLS LAST,
   ${tasks.updatedAt} DESC
 `;
-
-/**
- * Returns `true` for the SQL predicate matching “active” cards per type.
- * We compose this in code rather than as a CHECK so it can also be evaluated
- * client-side later if needed.
- */
-function activePredicate() {
-  return and(
-    ne(tasks.status, 'cancelled'),
-    or(
-      // Custom: delivered work stays visible while money/agreement still needs attention.
-      and(eq(tasks.type, 'custom'), customNeedsAttentionPredicate()),
-      // Content/Note: active unless done or cancelled
-      and(ne(tasks.type, 'custom'), ne(tasks.status, 'done')),
-    ),
-  );
-}
-
-function customNeedsAttentionPredicate() {
-  return or(
-    ne(tasks.status, 'delivered'),
-    sql`${tasks.agreementState} IS DISTINCT FROM 'confirmed'`,
-    sql`coalesce(${tasks.amountCollectedCents}, 0) < coalesce(${tasks.amountCents}, 0)`,
-  );
-}
-
-function completedCustomPredicate() {
-  return and(
-    eq(tasks.type, 'custom'),
-    eq(tasks.status, 'delivered'),
-    eq(tasks.agreementState, 'confirmed'),
-    sql`coalesce(${tasks.amountCollectedCents}, 0) >= coalesce(${tasks.amountCents}, 0)`,
-  );
-}
 
 function filterPredicate(filter: FilterValue, todayIso: string) {
   if (filter === 'all') return undefined;
@@ -140,7 +107,7 @@ export async function getFeed(
   const activeTopicIds = topicRows.map((topic) => topic.id);
 
   // Active tasks under filter (deadline) and any triage chips (urgent).
-  const wherePieces = [activePredicate()];
+  const wherePieces = [activeTaskPredicate()];
   if (activeTopicIds.length > 0) wherePieces.push(inArray(tasks.topicId, activeTopicIds));
   const deadlineWhere = filterPredicate(filter, todayIso);
   if (deadlineWhere) wherePieces.push(deadlineWhere);
@@ -159,13 +126,7 @@ export async function getFeed(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const recentPieces = [
-    and(
-      or(
-        completedCustomPredicate(),
-        and(ne(tasks.type, 'custom'), eq(tasks.status, 'done')),
-      ),
-      gte(tasks.updatedAt, sevenDaysAgo),
-    ),
+    and(recentlyCompletedTaskPredicate(), gte(tasks.updatedAt, sevenDaysAgo)),
   ];
   if (search) recentPieces.push(searchPredicate(search));
   if (activeTopicIds.length > 0) recentPieces.push(inArray(tasks.topicId, activeTopicIds));
@@ -220,7 +181,7 @@ export async function getHeaderMetrics(todayIso: string = toMskDateString()): Pr
     })
     .from(tasks)
     .innerJoin(topics, eq(tasks.topicId, topics.id))
-    .where(and(activePredicate(), isNull(topics.archivedAt)));
+    .where(and(activeTaskPredicate(), isNull(topics.archivedAt)));
 
   return {
     outstandingCustomCents: row?.outstandingCustomCents ?? 0,
