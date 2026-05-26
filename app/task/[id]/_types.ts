@@ -5,6 +5,8 @@
  */
 import type {
   AgreementState,
+  ContentDestination,
+  ContentProductionStatus,
   CustomContentKind,
   PaymentModel,
   TaskPriority,
@@ -33,8 +35,8 @@ export type TaskDto = {
   photoCountMin: number | null;
   photoCountMax: number | null;
   agreementState: AgreementState | null;
-  requesterId: string | null;
-  assigneeId: string | null;
+  contentDestination: ContentDestination | null;
+  contentProductionStatus: ContentProductionStatus | null;
   lastEditedBy: string | null;
   version: number;
   updatedAtIso: string;

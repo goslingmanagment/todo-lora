@@ -65,8 +65,6 @@ async function main() {
     if (createdIds.length > 0) {
       await tx.delete(tasks).where(inArray(tasks.id, createdIds));
     }
-    await tx.update(tasks).set({ assigneeId: null }).where(eq(tasks.assigneeId, user.id));
-    await tx.update(tasks).set({ requesterId: null }).where(eq(tasks.requesterId, user.id));
     await tx.update(tasks).set({ lastEditedBy: null }).where(eq(tasks.lastEditedBy, user.id));
     await tx.delete(taskEvents).where(eq(taskEvents.actorId, user.id));
     await tx.delete(userPreferences).where(eq(userPreferences.userId, user.id));

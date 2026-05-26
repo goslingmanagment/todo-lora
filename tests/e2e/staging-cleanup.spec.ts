@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { Client as MinioClient } from 'minio';
 import {
+  getCreateTaskLink,
   loginWithCode,
   provisionEphemeralUser,
   purgeEphemeralUser,
@@ -64,9 +65,10 @@ test('upload attempt at the 10-attachment limit leaves no staging objects', asyn
 
   await loginWithCode(page, CODE);
 
-  // Create a Content task (no money required, requester defaults to current user).
-  await page.getByRole('link', { name: '+ Новая ТЗ' }).click();
+  // Create a Content task (no money required).
+  await getCreateTaskLink(page).click();
   await page.getByRole('tab', { name: 'Контент' }).click();
+  await page.getByRole('button', { name: 'PPV-бандл' }).click();
   await page.getByLabel('Заголовок').fill(title);
   const d = new Date();
   d.setDate(d.getDate() + 3);

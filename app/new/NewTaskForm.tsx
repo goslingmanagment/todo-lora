@@ -12,9 +12,17 @@ import {
   presetCollected,
   type CustomPayStatus,
 } from '@/lib/domain/customTaskInput';
+import {
+  CONTENT_TASK_PRESETS,
+  chooseContentTopicId,
+  contentTopics,
+  defaultContentDestinationForTopic,
+  topicIdForContentPreset,
+  type ContentTaskPreset,
+} from '@/lib/domain/contentWorkflow';
 import { buildNewTaskPayload } from '@/lib/domain/newTaskPayload';
 import { parseDollarInput } from '@/lib/domain/inputs';
-import type { CustomContentKind } from '@/drizzle/schema/enums';
+import type { ContentDestination, CustomContentKind } from '@/drizzle/schema/enums';
 import {
   NewTaskMainPane,
   NewTaskSidebar,
@@ -24,13 +32,10 @@ import {
   type TabKey,
   type TopicOption,
   type UrlAttachmentDraft,
-  type UserOption,
 } from './NewTaskFormSections';
 
 type Props = {
   topics: TopicOption[];
-  users: UserOption[];
-  currentUserId: string;
   preferences: NewTaskPreferences;
 };
 
@@ -51,9 +56,10 @@ const ERROR_FIELD_IDS: Record<string, string> = {
   durationMaxMinutes: 'duration',
   photoCountMin: 'photoCount',
   photoCountMax: 'photoCount',
-  requesterId: 'requester',
   attachments: 'attachments-title',
-  description: 'briefDescription',
+  description: 'description',
+  contentPhotoCount: 'contentPhotoCount',
+  contentDuration: 'contentDuration',
 };
 
 const ERROR_FOCUS_ORDER = [
@@ -68,9 +74,10 @@ const ERROR_FOCUS_ORDER = [
   'durationMaxMinutes',
   'photoCountMin',
   'photoCountMax',
-  'requesterId',
   'deadlineOn',
   'description',
+  'contentPhotoCount',
+  'contentDuration',
   'attachments',
 ];
 
@@ -83,23 +90,21 @@ function isKnownPlatform(value: string | null | undefined): value is 'Fansly' | 
   return value === 'Fansly' || value === 'OnlyFans';
 }
 
-export function NewTaskForm({ topics, users, currentUserId, preferences }: Props) {
+export function NewTaskForm({ topics, preferences }: Props) {
   const customsTopicId = topics.find((t) => t.slug === 'customs')?.id ?? topics[0]?.id ?? '';
+  const contentTopicOptions = contentTopics(topics);
   const contentTopicId =
-    topics.find((t) => t.slug !== 'customs' && t.slug !== 'life')?.id ?? topics[0]?.id ?? '';
+    chooseContentTopicId(topics, preferences.content_task?.topicId) ?? topics[0]?.id ?? '';
   // Custom-type tasks always belong to the "customs" topic — the type itself
   // already declares the category, so the sidebar hides the topic switcher
   // and we don't honour the saved preference here.
   const initialTopicId = customsTopicId;
   const preferredPlatform = preferences.custom?.platform;
-  const loraUserId = users.find((u) => u.displayName === 'Лора')?.id ?? '';
 
   const [type, setType] = useState<TabKey>('custom');
 
   const defaultTopicFor = (t: TabKey): string => {
     if (t === 'custom') return customsTopicId;
-    const preferred = preferences[t]?.topicId;
-    if (preferred && topics.some((tp) => tp.id === preferred)) return preferred;
     return contentTopicId;
   };
 
@@ -110,6 +115,11 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
   const [deadlineOn, setDeadlineOn] = useState<string>('');
   // For content_task; custom uses brief/clothing/notes instead.
   const [description, setDescription] = useState('');
+  const [contentPhotoCountText, setContentPhotoCountText] = useState('');
+  const [contentDurationText, setContentDurationText] = useState('');
+  const [contentDestination, setContentDestination] = useState<ContentDestination>(
+    defaultContentDestinationForTopic(topics, contentTopicId),
+  );
 
   // Custom — buyer
   const [buyerHandle, setBuyerHandle] = useState('');
@@ -137,9 +147,7 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
   const [clothingDescription, setClothingDescription] = useState('');
   const [notesDescription, setNotesDescription] = useState('');
 
-  // Content
-  const [requesterId, setRequesterId] = useState<string>(currentUserId);
-  const [assigneeId, setAssigneeId] = useState<string>(loraUserId);
+  const [selectedContentPresetId, setSelectedContentPresetId] = useState<string | null>(null);
 
   const [urlAttachments, setUrlAttachments] = useState<UrlAttachmentDraft[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -159,10 +167,10 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
   const switchTaskType = (nextType: TabKey) => {
     if (nextType === type) return;
     setType(nextType);
-    setTopicId(defaultTopicFor(nextType));
     setPriority((prev) => prev ?? 'medium');
 
     if (nextType === 'custom') {
+      setTopicId(defaultTopicFor(nextType));
       const savedPlatform = preferences.custom?.platform;
       if (isKnownPlatform(savedPlatform)) {
         setPlatformChoice(savedPlatform);
@@ -174,7 +182,13 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
         setPlatformChoice('Fansly');
         setPlatformOther('');
       }
+      return;
     }
+
+    const nextTopicId = defaultTopicFor(nextType);
+    setTopicId(nextTopicId);
+    setContentDestination(defaultContentDestinationForTopic(topics, nextTopicId));
+    setSelectedContentPresetId(null);
   };
 
   useEffect(() => {
@@ -307,8 +321,9 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
       priority,
       deadlineOn,
       description,
-      requesterId,
-      assigneeId,
+      contentPhotoCountText,
+      contentDurationText,
+      contentDestination,
       buyerHandle,
       buyerDisplayName,
       platform,
@@ -336,6 +351,37 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
     setFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
   };
 
+  const setTopicFromSidebar = (value: string) => {
+    setTopicId(value);
+    if (type === 'content_task') {
+      setContentDestination(defaultContentDestinationForTopic(topics, value));
+      setSelectedContentPresetId(null);
+    }
+  };
+
+  const applyContentPreset = (preset: ContentTaskPreset) => {
+    const presetTopicId = topicIdForContentPreset(topics, preset);
+    if (presetTopicId) setTopicId(presetTopicId);
+    setSelectedContentPresetId(preset.id);
+    setTitle(preset.title);
+    setDescription(preset.description);
+    setContentPhotoCountText(preset.photoCountText);
+    setContentDurationText(preset.durationText);
+    setContentDestination(preset.destination);
+    setErrors((prev) => {
+      const {
+        title: _title,
+        description: _description,
+        contentPhotoCount: _contentPhotoCount,
+        contentDuration: _contentDuration,
+        contentDestination: _contentDestination,
+        topicId: _topicId,
+        ...rest
+      } = prev;
+      return rest;
+    });
+  };
+
   return (
     <form onSubmit={onSubmit} noValidate style={{ display: 'grid', gap: '1.1rem' }}>
       <TypeTabs type={type} onChange={switchTaskType} />
@@ -345,12 +391,15 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
         </p>
       ) : null}
 
-      <div className="task-form-grid">
+      <div className={`task-form-grid task-form-grid-${type}`}>
         <NewTaskMainPane
           type={type}
           title={title}
           setTitle={setTitle}
           errors={errors}
+          contentPresets={CONTENT_TASK_PRESETS}
+          selectedContentPresetId={selectedContentPresetId}
+          onApplyContentPreset={applyContentPreset}
           contentKind={contentKind}
           briefDescription={briefDescription}
           setBriefDescription={setBriefDescription}
@@ -374,11 +423,10 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
         />
         <NewTaskSidebar
           type={type}
-          topics={topics}
-          users={users}
+          topics={type === 'content_task' ? contentTopicOptions : topics}
           errors={errors}
           topicId={topicId}
-          setTopicId={setTopicId}
+          setTopicId={setTopicFromSidebar}
           platformChoice={platformChoice}
           setPlatformChoice={setPlatformChoice}
           platformOther={platformOther}
@@ -402,14 +450,14 @@ export function NewTaskForm({ topics, users, currentUserId, preferences }: Props
           setDurationText={setDurationText}
           photoCountText={photoCountText}
           setPhotoCountText={setPhotoCountText}
+          contentPhotoCountText={contentPhotoCountText}
+          setContentPhotoCountText={setContentPhotoCountText}
+          contentDurationText={contentDurationText}
+          setContentDurationText={setContentDurationText}
           deadlineOn={deadlineOn}
           setDeadlineOn={setDeadlineOn}
           priority={priority}
           setPriority={setPriority}
-          requesterId={requesterId}
-          setRequesterId={setRequesterId}
-          assigneeId={assigneeId}
-          setAssigneeId={setAssigneeId}
         />
       </div>
     </form>

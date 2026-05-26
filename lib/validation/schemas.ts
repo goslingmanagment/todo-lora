@@ -28,8 +28,30 @@ const optionalText = z
   .nullable()
   .transform((v) => (v && v.length > 0 ? v : null));
 
+const optionalPatchText = z
+  .string()
+  .trim()
+  .max(4000, { message: 'Слишком длинно' })
+  .optional()
+  .nullable()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    return v && v.length > 0 ? v : null;
+  });
+
 const priority = z.enum(['low', 'medium', 'high']);
 const taskStatus = z.enum(['draft', 'in_progress', 'done', 'delivered', 'cancelled']);
+const contentProductionStatus = z.enum(['planned', 'shot', 'editing', 'ready', 'posted']);
+const contentDestination = z.enum([
+  'of_wall',
+  'of_ppv',
+  'reddit',
+  'tiktok',
+  'twitter',
+  'instagram',
+  'chat',
+  'other',
+]);
 const paymentModel = z.enum(['full', 'unlock']);
 const customContentKind = z.enum(['video', 'photo']);
 const agreementState = z.enum(['pending', 'confirmed', 'rejected']);
@@ -173,11 +195,67 @@ export const createContentSchema = z.object({
   type: z.literal('content_task'),
   topicId: z.uuid({ message: 'Выберите тему' }),
   title: nonEmptyShort,
-  description: optionalText,
+  description: z
+    .string()
+    .trim()
+    .min(1, { message: 'Заполните ТЗ' })
+    .max(4000, { message: 'Слишком длинно' }),
+  durationMinMinutes: integerMinutes.optional().nullable(),
+  durationMaxMinutes: integerMinutes.optional().nullable(),
+  photoCountMin: integerCount.optional().nullable(),
+  photoCountMax: integerCount.optional().nullable(),
+  contentDestination: contentDestination.optional().default('other'),
+  contentProductionStatus: contentProductionStatus.optional().default('planned'),
   priority: priority,
   deadlineOn: isoDate,
-  requesterId: z.string().min(1, { message: 'Выберите заказчика' }),
-  assigneeId: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  const durationMin = data.durationMinMinutes;
+  const durationMax = data.durationMaxMinutes;
+  if (durationMin != null && durationMax != null && durationMin > durationMax) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['durationMaxMinutes'],
+      message: 'Максимум должен быть ≥ минимума',
+    });
+  }
+  if (durationMin != null && durationMin < 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['durationMinMinutes'],
+      message: 'Не может быть отрицательной',
+    });
+  }
+  if (durationMax != null && durationMax < 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['durationMaxMinutes'],
+      message: 'Не может быть отрицательной',
+    });
+  }
+
+  const photoMin = data.photoCountMin;
+  const photoMax = data.photoCountMax;
+  if (photoMin != null && photoMin <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['photoCountMin'],
+      message: 'Должно быть больше 0',
+    });
+  }
+  if (photoMax != null && photoMax <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['photoCountMax'],
+      message: 'Должно быть больше 0',
+    });
+  }
+  if (photoMin != null && photoMax != null && photoMin > photoMax) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['photoCountMax'],
+      message: 'Максимум должен быть ≥ минимума',
+    });
+  }
 });
 
 export type CreateContentInput = z.input<typeof createContentSchema>;
@@ -195,12 +273,12 @@ export const updateTaskSchema = z
     id: z.uuid(),
     expectedVersion: z.number().int().nonnegative({ message: 'expectedVersion обязателен' }),
     title: nonEmptyShort.optional(),
-    description: optionalText,
+    description: optionalPatchText,
     priority: priority.optional().nullable(),
     deadlineOn: isoDate.optional().nullable(),
     topicId: z.uuid().optional(),
     buyerHandle: z.string().trim().min(1).optional(),
-    buyerDisplayName: optionalText,
+    buyerDisplayName: optionalPatchText,
     platform: z.string().trim().min(1).optional(),
     contentKind: customContentKind.optional(),
     paymentModel: paymentModel.optional(),
@@ -210,9 +288,9 @@ export const updateTaskSchema = z
     durationMaxMinutes: integerMinutes.optional().nullable(),
     photoCountMin: integerCount.optional().nullable(),
     photoCountMax: integerCount.optional().nullable(),
+    contentDestination: contentDestination.optional(),
+    contentProductionStatus: contentProductionStatus.optional(),
     agreementState: agreementState.optional().nullable(),
-    requesterId: z.string().optional().nullable(),
-    assigneeId: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (data.amountDollars != null && data.amountDollars < 0) {

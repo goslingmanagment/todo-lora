@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import type { Task } from '@/drizzle/schema';
-import { formatCustomContentMetric } from '@/lib/format/customContent';
+import { formatCustomContentMetric, formatMediaVolume } from '@/lib/format/customContent';
 import { formatMoneyDisplay } from '@/lib/format/money';
+import { CONTENT_DESTINATION_LABELS_RU } from '@/lib/domain/contentDestination';
+import { CONTENT_PRODUCTION_LABELS_RU } from '@/lib/domain/contentProduction';
 import { AGREEMENT_LABELS_RU, STATUS_LABELS_RU, TYPE_LABELS_RU } from '@/lib/fsm/taskStatus';
 import { PriorityDot } from './PriorityDot';
 import { DeadlineChip } from './DeadlineChip';
@@ -142,6 +144,7 @@ function CustomMeta({ task, money }: { task: Task; money: string | null }) {
 }
 
 function NonCustomMeta({ task }: { task: Task }) {
+  const volume = formatMediaVolume(task);
   return (
     <div
       style={{
@@ -154,6 +157,15 @@ function NonCustomMeta({ task }: { task: Task }) {
       }}
     >
       <span className="muted-2">{TYPE_LABELS_RU[task.type]}</span>
+      {task.contentDestination ? (
+        <span className="muted-2">· {CONTENT_DESTINATION_LABELS_RU[task.contentDestination]}</span>
+      ) : null}
+      {volume ? <span className="muted-2">· {volume}</span> : null}
+      {task.contentProductionStatus ? (
+        <span className="chip chip-outline chip-gray">
+          {CONTENT_PRODUCTION_LABELS_RU[task.contentProductionStatus]}
+        </span>
+      ) : null}
       <span className={statusChipClass(task.status)}>{STATUS_LABELS_RU[task.status]}</span>
     </div>
   );

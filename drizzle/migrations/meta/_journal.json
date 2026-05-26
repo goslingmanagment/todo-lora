@@ -57,6 +57,41 @@
       "when": 1746576420000,
       "tag": "0008_custom_content_kind",
       "breakpoints": false
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746576480000,
+      "tag": "0009_content_task_volume",
+      "breakpoints": false
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1746576540000,
+      "tag": "0010_content_production_workflow",
+      "breakpoints": false
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1746576600000,
+      "tag": "0011_content_destination",
+      "breakpoints": false
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1746576660000,
+      "tag": "0012_drop_task_team_fields",
+      "breakpoints": false
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1746576720000,
+      "tag": "0013_drop_content_shot_list",
+      "breakpoints": false
     }
   ]
 }

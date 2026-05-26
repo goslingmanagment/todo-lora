@@ -1,4 +1,8 @@
-import type { CustomContentKind } from '@/drizzle/schema/enums';
+import type {
+  ContentDestination,
+  ContentProductionStatus,
+  CustomContentKind,
+} from '@/drizzle/schema/enums';
 import { ATTACHMENT_LIMIT, IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 import {
   composeCustomDescription,
@@ -31,8 +35,9 @@ export type NewTaskPayloadState = {
   priority: NewTaskPriority | null;
   deadlineOn: string;
   description: string;
-  requesterId: string;
-  assigneeId: string;
+  contentPhotoCountText: string;
+  contentDurationText: string;
+  contentDestination: ContentDestination | '';
   buyerHandle: string;
   buyerDisplayName: string;
   platform: string;
@@ -75,10 +80,14 @@ export type BuiltNewTaskPayload =
       topicId: string;
       title: string;
       description: string | null;
+      durationMinMinutes: number | null;
+      durationMaxMinutes: number | null;
+      photoCountMin: number | null;
+      photoCountMax: number | null;
+      contentDestination: ContentDestination;
+      contentProductionStatus: ContentProductionStatus;
       priority: NewTaskPriority;
       deadlineOn: string;
-      requesterId: string;
-      assigneeId: string | null;
     };
 
 export type NewTaskPayloadResult =
@@ -144,6 +153,17 @@ export function buildNewTaskPayload(state: NewTaskPayloadState): NewTaskPayloadR
     };
   }
 
+  const contentDuration = parseDurationRange(state.contentDurationText);
+  if (!contentDuration.ok) {
+    return { ok: false, errors: { contentDuration: contentDuration.error } };
+  }
+  const contentPhotos = state.contentPhotoCountText.trim()
+    ? parsePhotoCountRange(state.contentPhotoCountText)
+    : null;
+  if (contentPhotos && !contentPhotos.ok) {
+    return { ok: false, errors: { contentPhotoCount: contentPhotos.error } };
+  }
+
   return {
     ok: true,
     payload: {
@@ -151,10 +171,14 @@ export function buildNewTaskPayload(state: NewTaskPayloadState): NewTaskPayloadR
       topicId: state.topicId,
       title: trimmedTitle,
       description: state.description.trim() || null,
+      durationMinMinutes: contentDuration.min,
+      durationMaxMinutes: contentDuration.max,
+      photoCountMin: contentPhotos?.min ?? null,
+      photoCountMax: contentPhotos?.max ?? null,
+      contentDestination: state.contentDestination || 'other',
+      contentProductionStatus: 'planned',
       priority,
       deadlineOn: state.deadlineOn,
-      requesterId: state.requesterId,
-      assigneeId: state.assigneeId || null,
     },
   };
 }
@@ -173,9 +197,7 @@ export function validateNewTaskPayload(state: NewTaskPayloadState): Record<strin
     validateCustomTaskFields(state, errors);
   }
 
-  if (state.type === 'content_task' && !state.requesterId) {
-    errors.requesterId = 'Выберите заказчика';
-  }
+  if (state.type === 'content_task') validateContentTaskFields(state, errors);
 
   Object.assign(errors, validateNewTaskAttachments(state.urlAttachments, state.files));
   return errors;
@@ -253,6 +275,22 @@ function validateCustomTaskFields(
     const photos = parsePhotoCountRange(state.photoCountText);
     if (!photos.ok) errors.photoCountMin = photos.error;
   }
+}
+
+function validateContentTaskFields(
+  state: NewTaskPayloadState,
+  errors: Record<string, string>,
+): void {
+  if (!state.description.trim()) errors.description = 'Заполните ТЗ';
+
+  const duration = parseDurationRange(state.contentDurationText);
+  if (!duration.ok) errors.contentDuration = duration.error;
+
+  if (state.contentPhotoCountText.trim()) {
+    const photos = parsePhotoCountRange(state.contentPhotoCountText);
+    if (!photos.ok) errors.contentPhotoCount = photos.error;
+  }
+
 }
 
 function isHttpUrl(value: string): boolean {

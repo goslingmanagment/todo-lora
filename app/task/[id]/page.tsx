@@ -38,7 +38,6 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           topic={detail.topic}
           allTopics={detail.allTopics}
           users={detail.allUsers}
-          activeUsers={detail.activeUsers}
           attachments={detail.attachments.map((a) => ({
             id: a.id,
             kind: a.kind,

@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page, type Request } from '@playwright/test';
 import {
+  getCreateTaskLink,
   loginWithCode,
   provisionEphemeralUser,
   purgeEphemeralUser,
@@ -49,12 +50,13 @@ test('feed in window 1 picks up a task created in window 2', async ({ browser })
     await loginWithCode(feed, CODE);
     await loginWithCode(creator, CODE);
 
-    await expect(feed.getByRole('link', { name: '+ Новая ТЗ' })).toBeVisible();
+    await expect(getCreateTaskLink(feed)).toBeVisible();
 
     const title = uniqueTitle('E2E realtime');
 
-    await creator.getByRole('link', { name: '+ Новая ТЗ' }).click();
+    await getCreateTaskLink(creator).click();
     await creator.getByRole('tab', { name: 'Контент' }).click();
+    await creator.getByRole('button', { name: 'PPV-бандл' }).click();
     await creator.getByLabel('Заголовок').fill(title);
     const d = new Date();
     d.setDate(d.getDate() + 3);
@@ -87,6 +89,7 @@ test('detail page for task A does NOT refresh when task B is edited', async ({ b
     for (const title of [titleA, titleB]) {
       await pageB.goto('/new');
       await pageB.getByRole('tab', { name: 'Контент' }).click();
+      await pageB.getByRole('button', { name: 'PPV-бандл' }).click();
       await pageB.getByLabel('Заголовок').fill(title);
       const d = new Date();
       d.setDate(d.getDate() + 3);

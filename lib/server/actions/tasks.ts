@@ -1,14 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   attachments,
   taskEvents,
+  topics,
   tasks,
   userPreferences,
-  users,
   type Task,
   type TaskEvent,
 } from '@/drizzle/schema';
@@ -29,7 +29,7 @@ import {
   buildCustomTaskUpdatePatch,
   validateCustomTaskUpdate,
 } from '@/lib/server/customTaskUpdate';
-import { isActiveTopicId } from '@/lib/server/lookups';
+import { CUSTOMS_TOPIC_SLUG } from '@/lib/domain/contentWorkflow';
 import { notifyTaskMutation, recordTaskEventAndNotify } from '@/lib/server/taskMutation';
 import { flattenZodErrors, type ActionResult } from './_shared';
 
@@ -47,20 +47,10 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
   }
 
   const data = parsed.data;
-  const topicErrors = await validateWritableTopic(data.topicId);
+  const topicErrors = await validateWritableTopic(data.topicId, data.type);
   if (topicErrors) {
     return { ok: false, error: 'Проверьте поля формы', fieldErrors: topicErrors };
   }
-  if (data.type === 'content_task') {
-    const userErrors = await validateActiveContentUsers({
-      requesterId: data.requesterId,
-      assigneeId: data.assigneeId ?? null,
-    });
-    if (userErrors) {
-      return { ok: false, error: 'Проверьте поля формы', fieldErrors: userErrors };
-    }
-  }
-
   const id = await db.transaction(async (tx) => {
     let inserted: { id: string; topicId: string } | undefined;
     let createdTitle = '';
@@ -116,8 +106,12 @@ export async function createTaskAction(input: unknown): Promise<ActionResult<{ i
           description: data.description,
           priority: data.priority,
           deadlineOn: data.deadlineOn,
-          requesterId: data.requesterId,
-          assigneeId: data.assigneeId ?? null,
+          durationMinSeconds: minutesToSeconds(data.durationMinMinutes),
+          durationMaxSeconds: minutesToSeconds(data.durationMaxMinutes),
+          photoCountMin: data.photoCountMin ?? null,
+          photoCountMax: data.photoCountMax ?? null,
+          contentDestination: data.contentDestination,
+          contentProductionStatus: data.contentProductionStatus,
           createdBy: auth.user.id,
           lastEditedBy: auth.user.id,
         })
@@ -185,22 +179,29 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   if (semanticErrors) {
     return { ok: false, error: 'Проверьте поля формы', fieldErrors: semanticErrors };
   }
+  if (
+    existing.type === 'custom' &&
+    (v.contentDestination !== undefined || v.contentProductionStatus !== undefined)
+  ) {
+    return {
+      ok: false,
+      error: 'Проверьте поля формы',
+      fieldErrors: { contentProductionStatus: 'Только для контент-задач' },
+    };
+  }
   if (v.topicId !== undefined) {
-    const topicErrors = await validateWritableTopic(v.topicId, existing);
+    const topicErrors = await validateWritableTopic(v.topicId, existing.type, existing);
     if (topicErrors) {
       return { ok: false, error: 'Проверьте поля формы', fieldErrors: topicErrors };
     }
   }
   if (existing.type === 'content_task') {
-    const userErrors = await validateActiveContentUsers(
-      {
-        requesterId: v.requesterId ?? undefined,
-        assigneeId: v.assigneeId ?? undefined,
-      },
-      existing,
-    );
-    if (userErrors) {
-      return { ok: false, error: 'Проверьте поля формы', fieldErrors: userErrors };
+    if (v.description !== undefined && !v.description) {
+      return {
+        ok: false,
+        error: 'Проверьте поля формы',
+        fieldErrors: { description: 'Заполните ТЗ' },
+      };
     }
   }
 
@@ -217,8 +218,18 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
   }
   if (existing.type === 'content_task') {
     if (v.title !== undefined) patch.title = v.title;
-    if (v.requesterId !== undefined) patch.requesterId = v.requesterId;
-    if (v.assigneeId !== undefined) patch.assigneeId = v.assigneeId;
+    if (v.durationMinMinutes !== undefined) {
+      patch.durationMinSeconds = minutesToSeconds(v.durationMinMinutes);
+    }
+    if (v.durationMaxMinutes !== undefined) {
+      patch.durationMaxSeconds = minutesToSeconds(v.durationMaxMinutes);
+    }
+    if (v.photoCountMin !== undefined) patch.photoCountMin = v.photoCountMin;
+    if (v.photoCountMax !== undefined) patch.photoCountMax = v.photoCountMax;
+    if (v.contentDestination !== undefined) patch.contentDestination = v.contentDestination;
+    if (v.contentProductionStatus !== undefined) {
+      patch.contentProductionStatus = v.contentProductionStatus;
+    }
   }
 
   // OCC gate (§9.3, same pattern as changeStatusAction).
@@ -462,44 +473,24 @@ export async function getRecentEventsAction(
 
 async function validateWritableTopic(
   topicId: string,
+  taskType: Task['type'],
   existing?: Task,
 ): Promise<Record<string, string> | null> {
   if (existing && topicId === existing.topicId) return null;
-  if (await isActiveTopicId(topicId)) return null;
-  return { topicId: 'Выберите активную тему' };
-}
 
-async function validateActiveContentUsers(
-  input: { requesterId?: string | null; assigneeId?: string | null },
-  existing?: Task,
-): Promise<Record<string, string> | null> {
-  const requested = [
-    ['requesterId', input.requesterId, existing?.requesterId] as const,
-    ['assigneeId', input.assigneeId, existing?.assigneeId] as const,
-  ].filter(
-    (
-      entry,
-    ): entry is readonly ['requesterId' | 'assigneeId', string, string | null | undefined] => {
-      const [, next, current] = entry;
-      return Boolean(next && next !== current);
-    },
-  );
+  const [topic] = await db
+    .select({ slug: topics.slug, archivedAt: topics.archivedAt })
+    .from(topics)
+    .where(eq(topics.id, topicId))
+    .limit(1);
+  if (!topic || topic.archivedAt) return { topicId: 'Выберите активную категорию' };
 
-  if (requested.length === 0) return null;
-
-  const ids = Array.from(new Set(requested.map(([, id]) => id)));
-  const activeRows = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(inArray(users.id, ids), isNull(users.disabledAt)));
-  const active = new Set(activeRows.map((row) => row.id));
-
-  const errors: Record<string, string> = {};
-  for (const [field, id] of requested) {
-    if (!active.has(id)) {
-      errors[field] = 'Выберите активного пользователя';
-    }
+  if (taskType === 'custom' && topic.slug !== CUSTOMS_TOPIC_SLUG) {
+    return { topicId: 'Для Custom выберите тему Customs' };
+  }
+  if (taskType === 'content_task' && topic.slug === CUSTOMS_TOPIC_SLUG) {
+    return { topicId: 'Для контента выберите PPV, Sets, Life или другую контент-категорию' };
   }
 
-  return Object.keys(errors).length > 0 ? errors : null;
+  return null;
 }

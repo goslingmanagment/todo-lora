@@ -126,15 +126,25 @@ describe('createTaskSchema', () => {
     expect(r.success).toBe(false);
   });
 
-  it('rejects content task without requesterId', () => {
+  it('accepts content task volume fields', () => {
     const r = createTaskSchema.safeParse({
       type: 'content_task',
       topicId: validUuid,
-      title: 'X',
+      title: 'PPV-бандл',
+      description: 'Сюжет и референсы',
       priority: 'medium',
       deadlineOn: '2026-05-15',
+      durationMinMinutes: 5,
+      durationMaxMinutes: 10,
+      photoCountMin: 5,
+      photoCountMax: 15,
+      contentDestination: 'of_ppv',
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
+    if (r.success && r.data.type === 'content_task') {
+      expect(r.data.contentDestination).toBe('of_ppv');
+      expect(r.data.contentProductionStatus).toBe('planned');
+    }
   });
 
   it('rejects bad ISO deadline', () => {
@@ -143,7 +153,6 @@ describe('createTaskSchema', () => {
       topicId: validUuid,
       title: 'X',
       priority: 'medium',
-      requesterId: 'user-1',
       deadlineOn: 'tomorrow',
     });
     expect(r.success).toBe(false);
@@ -184,6 +193,19 @@ describe('updateTaskSchema', () => {
     expect(r.success).toBe(false);
     if (!r.success) {
       expect(r.error.issues.some((i) => i.path.join('.') === 'expectedVersion')).toBe(true);
+    }
+  });
+
+  it('preserves omitted optional text fields on patch updates', () => {
+    const r = updateTaskSchema.safeParse({
+      id: validUuid,
+      expectedVersion,
+      title: 'title only',
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.description).toBeUndefined();
+      expect(r.data.buyerDisplayName).toBeUndefined();
     }
   });
 

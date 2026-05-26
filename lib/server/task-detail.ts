@@ -2,13 +2,13 @@ import { desc, eq } from 'drizzle-orm';
 import { attachments, taskEvents, tasks, topics, users } from '@/drizzle/schema';
 import { db } from '@/lib/db/client';
 import { presignDownload } from '@/lib/storage/presign';
-import { listActiveUserOptions, listAllUserOptions, listEditableTopics } from './lookups';
+import { listAllUserOptions, listEditableTopics } from './lookups';
 
 export async function getTaskDetailData(id: string) {
   const task = await db.query.tasks.findFirst({ where: eq(tasks.id, id) });
   if (!task) return null;
 
-  const [topic, atts, events, allTopics, allUsers, activeUsers] = await Promise.all([
+  const [topic, atts, events, allTopics, allUsers] = await Promise.all([
     db.query.topics.findFirst({ where: eq(topics.id, task.topicId) }),
     db.select().from(attachments).where(eq(attachments.taskId, id)).orderBy(attachments.sortOrder),
     db.select({
@@ -26,7 +26,6 @@ export async function getTaskDetailData(id: string) {
       .limit(50),
     listEditableTopics(task.topicId),
     listAllUserOptions(),
-    listActiveUserOptions(),
   ]);
 
   const attachmentsWithPreview = await Promise.all(
@@ -41,7 +40,6 @@ export async function getTaskDetailData(id: string) {
     topic: topic ? { id: topic.id, name: topic.name, slug: topic.slug } : null,
     allTopics,
     allUsers,
-    activeUsers,
     attachments: attachmentsWithPreview,
     events,
   };

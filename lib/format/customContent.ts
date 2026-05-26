@@ -28,6 +28,19 @@ export function formatCustomContentMetric(task: CustomContentLike): string | nul
   return formatRange(min, max, 'мин');
 }
 
+export function formatMediaVolume(task: CustomContentLike): string | null {
+  const parts: string[] = [];
+  const photos = formatPhotoCount(task.photoCountMin ?? null, task.photoCountMax ?? null);
+  if (photos) parts.push(photos);
+
+  const min = task.durationMinSeconds != null ? Math.round(task.durationMinSeconds / 60) : null;
+  const max = task.durationMaxSeconds != null ? Math.round(task.durationMaxSeconds / 60) : null;
+  const duration = formatRange(min, max, 'мин');
+  if (duration) parts.push(duration);
+
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 function formatPhotoCount(min: number | null, max: number | null): string | null {
   return formatRange(min, max, 'фото');
 }

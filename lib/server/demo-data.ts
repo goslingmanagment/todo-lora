@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { taskEvents, tasks, topics } from '@/drizzle/schema';
+import type { ContentDestination } from '@/drizzle/schema/enums';
 import { addDaysIso, toMskDateString } from '@/lib/format/dates';
 import { notifyTaskMutation } from '@/lib/server/taskMutation';
 
@@ -15,8 +16,6 @@ type DemoFixture = {
   status?: 'draft' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | null;
   deadlineOffsetDays: number | null;
-  assignOwner?: boolean;
-  requestOwner?: boolean;
   buyerHandle?: string;
   buyerDisplayName?: string | null;
   platform?: string;
@@ -122,8 +121,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'in_progress',
     priority: 'high',
     deadlineOffsetDays: 3,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 9313,
@@ -135,8 +132,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'draft',
     priority: 'medium',
     deadlineOffsetDays: 12,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 9315,
@@ -148,8 +143,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'draft',
     priority: 'medium',
     deadlineOffsetDays: 6,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 9117,
@@ -161,8 +154,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'in_progress',
     priority: 'medium',
     deadlineOffsetDays: 4,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 8946,
@@ -174,8 +165,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'in_progress',
     priority: 'medium',
     deadlineOffsetDays: 1,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 9182,
@@ -187,8 +176,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'draft',
     priority: 'low',
     deadlineOffsetDays: 5,
-    assignOwner: true,
-    requestOwner: true,
   },
   {
     sourceMessageId: 9283,
@@ -238,8 +225,6 @@ const DEMO_FIXTURES: DemoFixture[] = [
     status: 'draft',
     priority: 'medium',
     deadlineOffsetDays: 8,
-    assignOwner: true,
-    requestOwner: true,
   },
 ];
 
@@ -306,8 +291,9 @@ export async function seedDemoTasks(
           status: fixture.status ?? 'draft',
           priority: fixture.priority ?? null,
           deadlineOn,
-          assigneeId: fixture.type === 'content_task' && fixture.assignOwner ? ownerId : null,
-          requesterId: fixture.type === 'content_task' && fixture.requestOwner ? ownerId : null,
+          contentDestination:
+            fixture.type === 'content_task' ? destinationForDemoTopic(fixture.topicSlug) : null,
+          contentProductionStatus: fixture.type === 'content_task' ? 'planned' : null,
           createdBy: ownerId,
           lastEditedBy: ownerId,
           buyerHandle: fixture.type === 'custom' ? (fixture.buyerHandle ?? null) : null,
@@ -363,6 +349,27 @@ export async function seedDemoTasks(
     existing: 0,
     topicIds: Array.from(insertedTopicIds),
   };
+}
+
+function destinationForDemoTopic(topicSlug: string): ContentDestination {
+  switch (topicSlug) {
+    case 'ppv':
+      return 'of_ppv';
+    case 'sets':
+    case 'pictures':
+      return 'of_wall';
+    case 'reddit':
+      return 'reddit';
+    case 'fyp':
+      return 'tiktok';
+    case 'instagram':
+      return 'instagram';
+    case 'life':
+    case 'sextings':
+      return 'chat';
+    default:
+      return 'other';
+  }
 }
 
 async function getClearableDemoTaskIds(): Promise<string[]> {

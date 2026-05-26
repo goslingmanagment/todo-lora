@@ -4,16 +4,29 @@ import { useState } from 'react';
 import type { useTransition } from 'react';
 import { updateTaskAction } from '@/lib/server/actions';
 import { showToast } from '@/components/Toaster';
-import type { CustomContentKind, PaymentModel, TaskPriority } from '@/drizzle/schema/enums';
+import type {
+  ContentDestination,
+  ContentProductionStatus,
+  CustomContentKind,
+  PaymentModel,
+  TaskPriority,
+} from '@/drizzle/schema/enums';
+import {
+  CONTENT_DESTINATION_LABELS_RU,
+  CONTENT_DESTINATIONS,
+} from '@/lib/domain/contentDestination';
+import { contentTopics } from '@/lib/domain/contentWorkflow';
+import {
+  CONTENT_PRODUCTION_LABELS_RU,
+  CONTENT_PRODUCTION_STATUSES,
+} from '@/lib/domain/contentProduction';
 import { parseCountInput, parseDollarInput, parseMinuteInput } from '@/lib/domain/inputs';
 import { FieldError } from './_primitives';
-import type { TaskDto, Topic, UserOption } from './_types';
+import type { TaskDto, Topic } from './_types';
 
 export function EditPanel({
   task,
   allTopics,
-  users,
-  activeUsers,
   onCancel,
   onSaved,
   onStale,
@@ -22,8 +35,6 @@ export function EditPanel({
 }: {
   task: TaskDto;
   allTopics: Topic[];
-  users: UserOption[];
-  activeUsers: UserOption[];
   onCancel: () => void;
   onSaved: () => void;
   onStale: () => void;
@@ -64,9 +75,17 @@ export function EditPanel({
     task.photoCountMax != null ? String(task.photoCountMax) : '',
   );
 
-  const [requesterId, setRequesterId] = useState(task.requesterId ?? '');
-  const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? '');
+  const [contentDestination, setContentDestination] = useState<ContentDestination>(
+    task.contentDestination ?? 'other',
+  );
+  const [contentProductionStatus, setContentProductionStatus] = useState<ContentProductionStatus>(
+    task.contentProductionStatus ?? 'planned',
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const editableTopics =
+    task.type === 'content_task'
+      ? keepCurrentTopic(contentTopics(allTopics), allTopics, topicId)
+      : allTopics;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,10 +150,38 @@ export function EditPanel({
       });
     }
     if (task.type === 'content_task') {
+      const localErrors: Record<string, string> = {};
+      const durationMinParsed = parseMinuteInput(durationMin);
+      const durationMaxParsed = parseMinuteInput(durationMax);
+      const photoMinParsed = parseCountInput(photoCountMin);
+      const photoMaxParsed = parseCountInput(photoCountMax);
+
+      if (!description.trim()) localErrors.description = 'Заполните ТЗ';
+      if (!durationMinParsed.ok) localErrors.durationMinMinutes = durationMinParsed.error;
+      if (!durationMaxParsed.ok) localErrors.durationMaxMinutes = durationMaxParsed.error;
+      if (!photoMinParsed.ok) localErrors.photoCountMin = photoMinParsed.error;
+      if (!photoMaxParsed.ok) localErrors.photoCountMax = photoMaxParsed.error;
+      if (Object.keys(localErrors).length > 0) {
+        setErrors(localErrors);
+        return;
+      }
+      if (
+        !durationMinParsed.ok ||
+        !durationMaxParsed.ok ||
+        !photoMinParsed.ok ||
+        !photoMaxParsed.ok
+      ) {
+        return;
+      }
+
       Object.assign(patch, {
         title: title.trim(),
-        requesterId: requesterId || null,
-        assigneeId: assigneeId || null,
+        durationMinMinutes: durationMinParsed.value,
+        durationMaxMinutes: durationMaxParsed.value,
+        photoCountMin: photoMinParsed.value,
+        photoCountMax: photoMaxParsed.value,
+        contentDestination,
+        contentProductionStatus,
       });
     }
     startTransition(async () => {
@@ -181,7 +228,7 @@ export function EditPanel({
 
       <div>
         <label htmlFor="ed-topic" className="label">
-          Тема
+          {task.type === 'content_task' ? 'Категория' : 'Тема'}
         </label>
         <select
           id="ed-topic"
@@ -191,7 +238,7 @@ export function EditPanel({
           value={topicId}
           onChange={(e) => setTopicId(e.target.value)}
         >
-          {allTopics.map((t) => (
+          {editableTopics.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
@@ -419,52 +466,115 @@ export function EditPanel({
       ) : null}
 
       {task.type === 'content_task' ? (
-        <div className="form-grid-2" style={{ gap: '0.85rem' }}>
+        <>
           <div>
-            <label htmlFor="ed-req" className="label">
-              Заказчик
+            <label htmlFor="ed-destination" className="label">
+              Назначение
             </label>
             <select
-              id="ed-req"
+              id="ed-destination"
               className="select"
-              aria-invalid={errors.requesterId ? 'true' : undefined}
-              aria-describedby={errors.requesterId ? 'ed-req-error' : undefined}
-              value={requesterId}
-              onChange={(e) => setRequesterId(e.target.value)}
+              value={contentDestination}
+              onChange={(e) => setContentDestination(e.target.value as ContentDestination)}
             >
-              <option value="">— не указан —</option>
-              {selectedInactiveUser(activeUsers, users, requesterId).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.displayName}
-                </option>
-              ))}
-            </select>
-            <FieldError id="ed-req-error" error={errors.requesterId} />
-          </div>
-          <div>
-            <label htmlFor="ed-asg" className="label">
-              Исполнитель
-            </label>
-            <select
-              id="ed-asg"
-              className="select"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-            >
-              <option value="">— не указан —</option>
-              {selectedInactiveUser(activeUsers, users, assigneeId).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.displayName}
+              {CONTENT_DESTINATIONS.map((destination) => (
+                <option key={destination} value={destination}>
+                  {CONTENT_DESTINATION_LABELS_RU[destination]}
                 </option>
               ))}
             </select>
           </div>
-        </div>
+          <div>
+            <label htmlFor="ed-production" className="label">
+              Продакшн
+            </label>
+            <select
+              id="ed-production"
+              className="select"
+              value={contentProductionStatus}
+              onChange={(e) => setContentProductionStatus(e.target.value as ContentProductionStatus)}
+            >
+              {CONTENT_PRODUCTION_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {CONTENT_PRODUCTION_LABELS_RU[status]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-grid-2" style={{ gap: '0.85rem' }}>
+            <div>
+              <label htmlFor="ed-photo-min" className="label">
+                Фото min
+              </label>
+              <input
+                id="ed-photo-min"
+                className="input tabular"
+                type="text"
+                inputMode="numeric"
+                aria-invalid={errors.photoCountMin ? 'true' : undefined}
+                aria-describedby={errors.photoCountMin ? 'ed-photo-min-error' : undefined}
+                value={photoCountMin}
+                onChange={(e) => setPhotoCountMin(e.target.value)}
+              />
+              <FieldError id="ed-photo-min-error" error={errors.photoCountMin} />
+            </div>
+            <div>
+              <label htmlFor="ed-photo-max" className="label">
+                Фото max
+              </label>
+              <input
+                id="ed-photo-max"
+                className="input tabular"
+                type="text"
+                inputMode="numeric"
+                aria-invalid={errors.photoCountMax ? 'true' : undefined}
+                aria-describedby={errors.photoCountMax ? 'ed-photo-max-error' : undefined}
+                value={photoCountMax}
+                onChange={(e) => setPhotoCountMax(e.target.value)}
+              />
+              <FieldError id="ed-photo-max-error" error={errors.photoCountMax} />
+            </div>
+          </div>
+          <div className="form-grid-2" style={{ gap: '0.85rem' }}>
+            <div>
+              <label htmlFor="ed-min" className="label">
+                Видео min, мин
+              </label>
+              <input
+                id="ed-min"
+                className="input tabular"
+                type="text"
+                inputMode="numeric"
+                aria-invalid={errors.durationMinMinutes ? 'true' : undefined}
+                aria-describedby={errors.durationMinMinutes ? 'ed-min-error' : undefined}
+                value={durationMin}
+                onChange={(e) => setDurationMin(e.target.value)}
+              />
+              <FieldError id="ed-min-error" error={errors.durationMinMinutes} />
+            </div>
+            <div>
+              <label htmlFor="ed-max" className="label">
+                Видео max, мин
+              </label>
+              <input
+                id="ed-max"
+                className="input tabular"
+                type="text"
+                inputMode="numeric"
+                aria-invalid={errors.durationMaxMinutes ? 'true' : undefined}
+                aria-describedby={errors.durationMaxMinutes ? 'ed-max-error' : undefined}
+                value={durationMax}
+                onChange={(e) => setDurationMax(e.target.value)}
+              />
+              <FieldError id="ed-max-error" error={errors.durationMaxMinutes} />
+            </div>
+          </div>
+        </>
       ) : null}
 
       <div>
         <label htmlFor="ed-desc" className="label">
-          Описание
+          {task.type === 'content_task' ? 'ТЗ / примечания' : 'Описание'}
         </label>
         <textarea
           id="ed-desc"
@@ -489,12 +599,12 @@ export function EditPanel({
   );
 }
 
-function selectedInactiveUser(
-  activeUsers: UserOption[],
-  allUsers: UserOption[],
-  userId: string,
-): UserOption[] {
-  if (!userId || activeUsers.some((u) => u.id === userId)) return activeUsers;
-  const current = allUsers.find((u) => u.id === userId);
-  return current ? [current, ...activeUsers] : activeUsers;
+function keepCurrentTopic(
+  activeContentTopics: Topic[],
+  allTopics: Topic[],
+  topicId: string,
+): Topic[] {
+  if (activeContentTopics.some((topic) => topic.id === topicId)) return activeContentTopics;
+  const current = allTopics.find((topic) => topic.id === topicId);
+  return current ? [current, ...activeContentTopics] : activeContentTopics;
 }

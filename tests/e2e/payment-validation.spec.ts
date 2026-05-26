@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { loginWithCode, provisionEphemeralUser, purgeEphemeralUser } from './_helpers';
+import {
+  getCreateTaskLink,
+  loginWithCode,
+  provisionEphemeralUser,
+  purgeEphemeralUser,
+} from './_helpers';
 
 /**
  * Payment validation on edit (Custom-only).
@@ -27,7 +32,7 @@ test('edit rejects collected > total and nulling the amount', async ({ page }) =
   await loginWithCode(page, CODE);
 
   // Create a Custom task with amount=$100.
-  await page.getByRole('link', { name: '+ Новая ТЗ' }).click();
+  await getCreateTaskLink(page).click();
   await page.getByLabel('Ник / ссылка').fill(buyerHandle);
   await page.getByLabel('Сумма, $').fill('100');
   const future = new Date();

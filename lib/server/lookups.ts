@@ -34,13 +34,6 @@ export async function listEditableTopics(currentTopicId: string): Promise<TopicO
   return current[0] ? [current[0], ...active] : active;
 }
 
-export async function listActiveUserOptions(): Promise<UserOption[]> {
-  return db
-    .select({ id: users.id, displayName: users.displayName })
-    .from(users)
-    .where(isNull(users.disabledAt));
-}
-
 export async function listAllUserOptions(): Promise<UserOption[]> {
   return db.select({ id: users.id, displayName: users.displayName }).from(users);
 }

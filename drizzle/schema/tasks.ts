@@ -13,7 +13,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import {
   agreementStateEnum,
+  contentDestinationEnum,
   attachmentKindEnum,
+  contentProductionStatusEnum,
   customContentKindEnum,
   paymentModelEnum,
   taskPriorityEnum,
@@ -38,8 +40,6 @@ export const tasks = pgTable(
     status: taskStatusEnum('status').notNull().default('draft'),
     priority: taskPriorityEnum('priority'),
     deadlineOn: date('deadline_on', { mode: 'string' }),
-    assigneeId: text('assignee_id').references(() => users.id, { onDelete: 'set null' }),
-    requesterId: text('requester_id').references(() => users.id, { onDelete: 'set null' }),
     createdBy: text('created_by')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -48,7 +48,7 @@ export const tasks = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     version: integer('version').notNull().default(0),
 
-    // Custom-only columns
+    // Custom-only buyer/payment columns plus shared media volume columns.
     buyerHandle: text('buyer_handle'),
     buyerDisplayName: text('buyer_display_name'),
     platform: text('platform'),
@@ -61,6 +61,8 @@ export const tasks = pgTable(
     photoCountMin: integer('photo_count_min'),
     photoCountMax: integer('photo_count_max'),
     agreementState: agreementStateEnum('agreement_state'),
+    contentDestination: contentDestinationEnum('content_destination'),
+    contentProductionStatus: contentProductionStatusEnum('content_production_status'),
   },
   (t) => ({
     feedIdx: index('tasks_topic_status_idx').on(t.topicId, t.status),
@@ -80,10 +82,6 @@ export const tasks = pgTable(
         ${t.paymentModel} IS NULL AND
         ${t.amountCents} IS NULL AND
         ${t.amountCollectedCents} IS NULL AND
-        ${t.durationMinSeconds} IS NULL AND
-        ${t.durationMaxSeconds} IS NULL AND
-        ${t.photoCountMin} IS NULL AND
-        ${t.photoCountMax} IS NULL AND
         ${t.agreementState} IS NULL
       )`,
     ),
@@ -106,6 +104,18 @@ export const tasks = pgTable(
           AND ${t.photoCountMin} IS NOT NULL
           AND ${t.photoCountMax} IS NOT NULL
         )`,
+    ),
+    contentFieldsCk: check(
+      'tasks_content_fields_ck',
+      sql`(
+        ${t.type} = 'content_task'
+        AND ${t.contentDestination} IS NOT NULL
+        AND ${t.contentProductionStatus} IS NOT NULL
+      ) OR (
+        ${t.type} <> 'content_task'
+        AND ${t.contentDestination} IS NULL
+        AND ${t.contentProductionStatus} IS NULL
+      )`,
     ),
     deliveredOnlyCustomCk: check(
       'tasks_delivered_only_custom_ck',

@@ -19,15 +19,15 @@ const VALID_MISSING_TASK_ID = '00000000-0000-0000-0000-0000000000cc';
 // Default content_task fixture used as a stub anywhere we just need *some*
 // task to exist. Previously these tests used `type: 'note'` because note
 // required no extra fields; with note removed, content_task is the cheapest
-// real option and needs requester/priority/deadline.
+// real option and needs priority/deadline.
 function stubInput(topicId: string, title: string) {
   return {
     type: 'content_task' as const,
     topicId,
     title,
+    description: 'content task brief',
     priority: 'medium' as const,
     deadlineOn: '2026-06-01',
-    requesterId: ACTOR_ID,
   };
 }
 
@@ -164,6 +164,10 @@ async function getCustomsTopicId(): Promise<string> {
   return getTopicId('customs');
 }
 
+async function getContentTopicId(): Promise<string> {
+  return getTopicId('sets');
+}
+
 async function createArchivedTopic(slug: string): Promise<string> {
   const { rows } = await getPool().query(
     `
@@ -222,51 +226,6 @@ describe('createTaskAction', () => {
     expect(events[0]!.actorId).toBe(ACTOR_ID);
   });
 
-  it('rejects content_task without requesterId', async () => {
-    const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'no requester',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('rejects disabled users for new content task assignments', async () => {
-    const topicId = await getCustomsTopicId();
-    await getPool().query(`UPDATE users SET disabled_at = now() WHERE id = $1`, [OTHER_ID]);
-
-    const disabledRequester = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'disabled requester',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-      requesterId: OTHER_ID,
-      assigneeId: null,
-    });
-    expect(disabledRequester.ok).toBe(false);
-    if (!disabledRequester.ok) {
-      expect(disabledRequester.fieldErrors?.requesterId).toBe('Выберите активного пользователя');
-    }
-
-    const disabledAssignee = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'disabled assignee',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
-      assigneeId: OTHER_ID,
-    });
-    expect(disabledAssignee.ok).toBe(false);
-    if (!disabledAssignee.ok) {
-      expect(disabledAssignee.fieldErrors?.assigneeId).toBe('Выберите активного пользователя');
-    }
-  });
-
   it('rejects new tasks for archived topics', async () => {
     const topicId = await createArchivedTopic('archived-create-action');
 
@@ -274,13 +233,13 @@ describe('createTaskAction', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.fieldErrors?.topicId).toBe('Выберите активную тему');
+      expect(result.fieldErrors?.topicId).toBe('Выберите активную категорию');
     }
   });
 
   it('stores server-side defaults per user and task type', async () => {
     const customsTopicId = await getCustomsTopicId();
-    const setsTopicId = await getTopicId('sets');
+    const contentTopicId = await getContentTopicId();
     const r1 = await actions.createTaskAction({
       type: 'custom',
       topicId: customsTopicId,
@@ -298,7 +257,7 @@ describe('createTaskAction', () => {
 
     const r2 = await actions.createTaskAction({
       type: 'custom',
-      topicId: setsTopicId,
+      topicId: customsTopicId,
       title: 'Custom prefs second',
       priority: 'medium',
       deadlineOn: '2026-05-16',
@@ -311,7 +270,7 @@ describe('createTaskAction', () => {
     });
     expect(r2.ok).toBe(true);
 
-    const r3 = await actions.createTaskAction(stubInput(customsTopicId, 'Content prefs'));
+    const r3 = await actions.createTaskAction(stubInput(contentTopicId, 'Content prefs'));
     expect(r3.ok).toBe(true);
 
     const prefs = await db.select().from(schema.userPreferences);
@@ -319,9 +278,9 @@ describe('createTaskAction', () => {
     const contentPref = prefs.find((pref) => pref.taskType === 'content_task');
 
     expect(customPref?.userId).toBe(ACTOR_ID);
-    expect(customPref?.lastTopicId).toBe(setsTopicId);
+    expect(customPref?.lastTopicId).toBe(customsTopicId);
     expect(customPref?.lastPlatform).toBe('ManyVids');
-    expect(contentPref?.lastTopicId).toBe(customsTopicId);
+    expect(contentPref?.lastTopicId).toBe(contentTopicId);
     expect(contentPref?.lastPlatform).toBeNull();
   });
 });
@@ -330,7 +289,7 @@ describe('protected server actions', () => {
   it('rejects unauthenticated task and audit reads', async () => {
     authState.authenticated = false;
 
-    const create = await actions.createTaskAction(stubInput(await getCustomsTopicId(), 'blocked'));
+    const create = await actions.createTaskAction(stubInput(await getContentTopicId(), 'blocked'));
     expect(create.ok).toBe(false);
     if (!create.ok) expect(create.code).toBe('unauthenticated');
 
@@ -341,16 +300,6 @@ describe('protected server actions', () => {
 });
 
 describe('shared lookup helpers', () => {
-  it('omits disabled users from active assignee options', async () => {
-    await getPool().query(`UPDATE users SET disabled_at = now() WHERE id = $1`, [OTHER_ID]);
-    const activeUsers = await lookups.listActiveUserOptions();
-    const allUsers = await lookups.listAllUserOptions();
-
-    expect(activeUsers.some((user) => user.id === ACTOR_ID)).toBe(true);
-    expect(activeUsers.some((user) => user.id === OTHER_ID)).toBe(false);
-    expect(allUsers.some((user) => user.id === OTHER_ID)).toBe(true);
-  });
-
   it('includes the current archived topic when building edit options', async () => {
     const topicId = await createArchivedTopic('archived-edit-options');
 
@@ -364,7 +313,7 @@ describe('shared lookup helpers', () => {
 
 describe('demo data actions', () => {
   it('seeds a small idempotent demo set and clears only demo tasks', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const realTask = await actions.createTaskAction(stubInput(topicId, 'real task must stay'));
     expect(realTask.ok).toBe(true);
 
@@ -392,6 +341,8 @@ describe('demo data actions', () => {
         type: 'content_task',
         topicId,
         title: 'legacy seed task',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: ACTOR_ID,
       })
       .returning({ id: schema.tasks.id });
@@ -558,14 +509,14 @@ describe('changeStatusAction (FSM + OCC)', () => {
   });
 
   it('rejects non-Custom → delivered', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'X',
+      description: 'brief',
       priority: 'low',
       deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
     });
     if (!c.ok) throw new Error('create failed');
     let cur = await reloadTask(c.data.id);
@@ -595,7 +546,7 @@ describe('changeStatusAction (FSM + OCC)', () => {
 
 describe('agreement state', () => {
   it('rejects setAgreementState on non-Custom', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'note'));
     if (!c.ok) throw new Error('create failed');
     const task = await reloadTask(c.data.id);
@@ -646,13 +597,15 @@ describe('agreement state', () => {
 
 describe('URL attachments', () => {
   it('adds and removes URL attachments with audit events and parent task metadata', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const [task] = await db
       .insert(schema.tasks)
       .values({
         type: 'content_task',
         topicId,
         title: 'attach',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OTHER_ID,
         lastEditedBy: OTHER_ID,
       })
@@ -683,7 +636,7 @@ describe('URL attachments', () => {
   });
 
   it('does not create duplicate audit events or version bumps on stale attachment delete', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'double delete'));
     if (!c.ok) throw new Error('create failed');
     const a = await actions.createUrlAttachmentAction({
@@ -708,7 +661,7 @@ describe('URL attachments', () => {
   });
 
   it('rejects javascript: URLs', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'attach'));
     if (!c.ok) throw new Error('create failed');
     const a = await actions.createUrlAttachmentAction({
@@ -719,7 +672,7 @@ describe('URL attachments', () => {
   });
 
   it('enforces 10-attachment cap', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'cap'));
     if (!c.ok) throw new Error('create failed');
     for (let i = 0; i < 10; i++) {
@@ -737,7 +690,7 @@ describe('URL attachments', () => {
   });
 
   it('serializes concurrent writes at the 10-attachment cap', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'cap race'));
     if (!c.ok) throw new Error('create failed');
 
@@ -792,8 +745,9 @@ describe('feed query', () => {
       title: 'hidden by archived topic',
       priority: 'high',
       deadlineOn: '2026-05-15',
+      contentDestination: 'other',
+      contentProductionStatus: 'planned',
       createdBy: ACTOR_ID,
-      requesterId: ACTOR_ID,
     });
 
     const result = await feed.getFeed('all');
@@ -869,7 +823,7 @@ describe('feed query', () => {
   });
 
   it('urgent triage filter narrows to high-priority active rows and intersects deadline filters', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const { toMskDateString, addDaysIso } = await import('@/lib/format/dates');
     const today = toMskDateString();
     const tomorrow = addDaysIso(today, 1);
@@ -879,33 +833,33 @@ describe('feed query', () => {
       type: 'content_task',
       topicId,
       title: 'low active',
+      description: 'brief',
       priority: 'low',
       deadlineOn: today,
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'med tomorrow',
+      description: 'brief',
       priority: 'medium',
       deadlineOn: tomorrow,
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'high today',
+      description: 'brief',
       priority: 'high',
       deadlineOn: today,
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'high overdue',
+      description: 'brief',
       priority: 'high',
       deadlineOn: yesterday,
-      requesterId: ACTOR_ID,
     });
 
     const urgentAll = await feed.getFeed('all', { urgent: true });
@@ -919,18 +873,19 @@ describe('feed query', () => {
   });
 
   it('searches active tasks by title and custom buyer fields', async () => {
-    const topicId = await getCustomsTopicId();
+    const contentTopicId = await getContentTopicId();
+    const customsTopicId = await getCustomsTopicId();
     await actions.createTaskAction({
       type: 'content_task',
-      topicId,
+      topicId: contentTopicId,
       title: 'ordinary note',
+      description: 'brief',
       priority: 'low',
       deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'custom',
-      topicId,
+      topicId: customsTopicId,
       title: 'buyer lookup',
       priority: 'low',
       deadlineOn: '2026-05-15',
@@ -952,30 +907,30 @@ describe('feed query', () => {
   });
 
   it('treats percent and underscore search terms as literal characters', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'plain content task',
+      description: 'brief',
       priority: 'low',
       deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'literal 100% match',
+      description: 'brief',
       priority: 'low',
       deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'literal_under_score',
+      description: 'brief',
       priority: 'low',
       deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
     });
 
     const byPercent = await feed.getFeed('all', { search: '%' });
@@ -991,24 +946,24 @@ describe('feed query', () => {
 
   it('overdue filter only matches deadlines strictly before today', async () => {
     const { addDaysIso, toMskDateString } = await import('@/lib/format/dates');
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const today = toMskDateString();
     const yesterday = addDaysIso(today, -1);
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'overdue',
+      description: 'brief',
       deadlineOn: yesterday,
       priority: 'low',
-      requesterId: ACTOR_ID,
     });
     await actions.createTaskAction({
       type: 'content_task',
       topicId,
       title: 'today',
+      description: 'brief',
       deadlineOn: today,
       priority: 'low',
-      requesterId: ACTOR_ID,
     });
     const overdue = await feed.getFeed('overdue');
     const overdueRows = overdue.sections.flatMap((s) => s.active);
@@ -1019,7 +974,7 @@ describe('feed query', () => {
 
 describe('realtime invalidation fanout', () => {
   it('emits exactly one NOTIFY per createTaskAction', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const client = await getPool().connect();
     try {
       await client.query('LISTEN task_changes');
@@ -1046,7 +1001,7 @@ describe('realtime invalidation fanout', () => {
   });
 
   it('emits exactly one NOTIFY per updateTaskAction', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const r = await actions.createTaskAction(stubInput(topicId, 'pre-update'));
     if (!r.ok) throw new Error('create failed');
     const fresh = await reloadTask(r.data.id);
@@ -1077,7 +1032,7 @@ describe('realtime invalidation fanout', () => {
   });
 
   it('emits exactly one NOTIFY per createUrlAttachmentAction', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const r = await actions.createTaskAction(stubInput(topicId, 'attachment notify'));
     if (!r.ok) throw new Error('create failed');
 
@@ -1109,7 +1064,7 @@ describe('realtime invalidation fanout', () => {
 
 describe('updateTaskAction', () => {
   it('records audit event and bumps updated_at', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const r = await actions.createTaskAction(stubInput(topicId, 'orig'));
     if (!r.ok) throw new Error('create failed');
     const before = await reloadTask(r.data.id);
@@ -1129,7 +1084,7 @@ describe('updateTaskAction', () => {
   });
 
   it('returns stale on OCC mismatch and does not write', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const r = await actions.createTaskAction(stubInput(topicId, 'occ orig'));
     if (!r.ok) throw new Error('create failed');
     const beforeEvents = await recentEvents(r.data.id);
@@ -1152,7 +1107,7 @@ describe('updateTaskAction', () => {
   });
 
   it('rejects a second concurrent write with stale once one has landed', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const r = await actions.createTaskAction(stubInput(topicId, 'race orig'));
     if (!r.ok) throw new Error('create failed');
     const snapshot = await reloadTask(r.data.id);
@@ -1176,54 +1131,8 @@ describe('updateTaskAction', () => {
     expect(after.title).toBe('first');
   });
 
-  it('rejects switching content assignments to disabled users but preserves current inactive values', async () => {
-    const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'inactive assignee',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
-      assigneeId: OTHER_ID,
-    });
-    if (!r.ok) throw new Error('create failed');
-
-    await getPool().query(`UPDATE users SET disabled_at = now() WHERE id = $1`, [OTHER_ID]);
-    const existingInactive = await reloadTask(r.data.id);
-    const preserve = await actions.updateTaskAction({
-      id: r.data.id,
-      expectedVersion: existingInactive.version,
-      title: 'keeps inactive assignee',
-      requesterId: ACTOR_ID,
-      assigneeId: OTHER_ID,
-    });
-    expect(preserve.ok).toBe(true);
-
-    const unassigned = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'assign disabled later',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
-      assigneeId: null,
-    });
-    if (!unassigned.ok) throw new Error('create failed');
-    const snapshot = await reloadTask(unassigned.data.id);
-    const rejected = await actions.updateTaskAction({
-      id: unassigned.data.id,
-      expectedVersion: snapshot.version,
-      assigneeId: OTHER_ID,
-    });
-    expect(rejected.ok).toBe(false);
-    if (!rejected.ok) {
-      expect(rejected.fieldErrors?.assigneeId).toBe('Выберите активного пользователя');
-    }
-  });
-
   it('rejects moving a task to an archived topic but preserves the current archived topic', async () => {
-    const activeTopicId = await getCustomsTopicId();
+    const activeTopicId = await getContentTopicId();
     const archivedTopicId = await createArchivedTopic('archived-update-action');
 
     const created = await actions.createTaskAction(stubInput(activeTopicId, 'active topic task'));
@@ -1237,7 +1146,7 @@ describe('updateTaskAction', () => {
     });
     expect(moveToArchived.ok).toBe(false);
     if (!moveToArchived.ok) {
-      expect(moveToArchived.fieldErrors?.topicId).toBe('Выберите активную тему');
+      expect(moveToArchived.fieldErrors?.topicId).toBe('Выберите активную категорию');
     }
 
     const [existingArchived] = await db
@@ -1246,8 +1155,9 @@ describe('updateTaskAction', () => {
         type: 'content_task',
         topicId: archivedTopicId,
         title: 'already archived topic',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: ACTOR_ID,
-        requesterId: ACTOR_ID,
       })
       .returning();
     if (!existingArchived) throw new Error('raw insert failed');
@@ -1259,32 +1169,6 @@ describe('updateTaskAction', () => {
       topicId: archivedTopicId,
     });
     expect(preserveArchived.ok).toBe(true);
-  });
-
-  it('clears requester when the edit form sends requesterId null', async () => {
-    const topicId = await getCustomsTopicId();
-    const r = await actions.createTaskAction({
-      type: 'content_task',
-      topicId,
-      title: 'clear requester',
-      priority: 'medium',
-      deadlineOn: '2026-05-15',
-      requesterId: ACTOR_ID,
-      assigneeId: OTHER_ID,
-    });
-    if (!r.ok) throw new Error('create failed');
-    const before = await reloadTask(r.data.id);
-
-    const cleared = await actions.updateTaskAction({
-      id: r.data.id,
-      expectedVersion: before.version,
-      requesterId: null,
-    });
-
-    expect(cleared.ok).toBe(true);
-    const after = await reloadTask(r.data.id);
-    expect(after.requesterId).toBeNull();
-    expect(after.assigneeId).toBe(OTHER_ID);
   });
 
   it('returns field errors for invalid custom money and duration updates', async () => {
@@ -1356,13 +1240,15 @@ describe('image attachment finalization', () => {
   }
 
   it('registers an image attachment after sanitize and updates parent task metadata', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const [task] = await db
       .insert(schema.tasks)
       .values({
         type: 'content_task',
         topicId,
         title: 'pic',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OTHER_ID,
         lastEditedBy: OTHER_ID,
       })
@@ -1389,7 +1275,7 @@ describe('image attachment finalization', () => {
   });
 
   it('skips sanitize and deletes staging when the cap is already reached', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic cap'));
     if (!c.ok) throw new Error('create failed');
     await insertUrlAttachments(c.data.id, 10);
@@ -1408,7 +1294,7 @@ describe('image attachment finalization', () => {
   });
 
   it('rejects oversized staged objects before sanitize and deletes staging', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic too large'));
     if (!c.ok) throw new Error('create failed');
     const stagingKey = `staging/${c.data.id}/00000000-0000-4000-8000-000000000001.jpg`;
@@ -1428,7 +1314,7 @@ describe('image attachment finalization', () => {
   });
 
   it('deletes staging when sanitize fails', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic sanitize fail'));
     if (!c.ok) throw new Error('create failed');
     const stagingKey = `staging/${c.data.id}/00000000-0000-4000-8000-000000000001.jpg`;
@@ -1447,7 +1333,7 @@ describe('image attachment finalization', () => {
   });
 
   it('rechecks the cap after sanitize and deletes the canonical object on cap race', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic cap race'));
     if (!c.ok) throw new Error('create failed');
     sanitizeState.onSanitize = async (taskId) => {
@@ -1472,7 +1358,7 @@ describe('image attachment finalization', () => {
   });
 
   it('deletes the canonical object when DB finalization fails', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic db fail'));
     if (!c.ok) throw new Error('create failed');
     await getPool().query(`
@@ -1510,7 +1396,7 @@ describe('image attachment finalization', () => {
   });
 
   it('rejects forged canonical object keys before sanitize', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'pic'));
     if (!c.ok) throw new Error('create failed');
     const r = await actions.finalizeImageAttachmentAction({
@@ -1528,7 +1414,7 @@ describe('image attachment finalization', () => {
 
 describe('deleteTaskAction (hard delete)', () => {
   it('removes the row, cascades attachments + events, and cleans MinIO objects', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'to delete'));
     if (!c.ok) throw new Error('create failed');
 
@@ -1577,7 +1463,7 @@ describe('deleteTaskAction (hard delete)', () => {
   });
 
   it('returns stale when expectedVersion is wrong and does not delete', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'survive'));
     if (!c.ok) throw new Error('create failed');
 
@@ -1593,7 +1479,7 @@ describe('deleteTaskAction (hard delete)', () => {
   });
 
   it('hides the task from feed reads after hard delete', async () => {
-    const topicId = await getCustomsTopicId();
+    const topicId = await getContentTopicId();
     const c = await actions.createTaskAction(stubInput(topicId, 'visible then gone'));
     if (!c.ok) throw new Error('create failed');
     const fresh = await reloadTask(c.data.id);

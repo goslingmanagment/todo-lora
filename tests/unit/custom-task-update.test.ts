@@ -16,8 +16,6 @@ const baseTask: Task = {
   status: 'draft',
   priority: 'medium',
   deadlineOn: '2026-06-01',
-  assigneeId: null,
-  requesterId: null,
   createdBy: 'user-1',
   lastEditedBy: 'user-1',
   createdAt: new Date('2026-05-01T00:00:00Z'),
@@ -34,6 +32,8 @@ const baseTask: Task = {
   durationMaxSeconds: 300,
   photoCountMin: null,
   photoCountMax: null,
+  contentDestination: null,
+  contentProductionStatus: null,
   agreementState: 'pending',
 };
 

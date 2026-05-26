@@ -7,11 +7,11 @@ import {
   ATTACHMENT_LIMIT as MAX_ATTACHMENTS,
 } from '@/lib/domain/attachmentPolicy';
 import type { CustomContentKind } from '@/drizzle/schema/enums';
+import type { ContentTaskPreset } from '@/lib/domain/contentWorkflow';
 import type { CustomPayStatus } from '@/lib/domain/customTaskInput';
 import type { NewTaskUrlAttachment } from '@/lib/domain/newTaskPayload';
 
 export type TopicOption = { id: string; name: string; slug: string };
-export type UserOption = { id: string; displayName: string };
 export type TabKey = 'custom' | 'content_task';
 export type PriorityValue = 'low' | 'medium' | 'high';
 export type PayStatus = CustomPayStatus;
@@ -74,6 +74,9 @@ export function NewTaskMainPane({
   title,
   setTitle,
   errors,
+  contentPresets,
+  selectedContentPresetId,
+  onApplyContentPreset,
   contentKind,
   briefDescription,
   setBriefDescription,
@@ -99,6 +102,9 @@ export function NewTaskMainPane({
   title: string;
   setTitle: (value: string) => void;
   errors: Record<string, string>;
+  contentPresets: ContentTaskPreset[];
+  selectedContentPresetId: string | null;
+  onApplyContentPreset: (preset: ContentTaskPreset) => void;
   contentKind: CustomContentKind;
   briefDescription: string;
   setBriefDescription: (value: string) => void;
@@ -123,8 +129,17 @@ export function NewTaskMainPane({
   return (
     <div className="task-form-main">
       {type === 'content_task' ? (
-        <ContentTitleField title={title} setTitle={setTitle} error={errors.title} />
-      ) : null}
+        <>
+          <ContentTitleField title={title} setTitle={setTitle} error={errors.title} />
+          <ContentPresetPicker
+            presets={contentPresets}
+            selectedPresetId={selectedContentPresetId}
+            onApply={onApplyContentPreset}
+          />
+        </>
+      ) : (
+        <CustomFormHeading />
+      )}
 
       {type === 'custom' ? (
         <CustomDescriptionFields
@@ -137,7 +152,13 @@ export function NewTaskMainPane({
           setNotesDescription={setNotesDescription}
         />
       ) : (
-        <ContentDescriptionField description={description} setDescription={setDescription} />
+        <>
+          <ContentDescriptionField
+            description={description}
+            setDescription={setDescription}
+            error={errors.description}
+          />
+        </>
       )}
 
       <AttachmentsSection
@@ -190,6 +211,10 @@ function ContentTitleField({
       ) : null}
     </>
   );
+}
+
+function CustomFormHeading() {
+  return <h1 className="task-form-static-title">Custom ТЗ</h1>;
 }
 
 function CustomDescriptionFields({
@@ -284,26 +309,72 @@ function CustomDescriptionFields({
 function ContentDescriptionField({
   description,
   setDescription,
+  error,
 }: {
   description: string;
   setDescription: (value: string) => void;
+  error?: string;
 }) {
   return (
     <div className="task-form-block">
       <div className="task-form-block-head">
         <span id="description-label" className="lbl">
-          Описание
+          ТЗ / примечания
         </span>
-        <span className="opt">опционально</span>
+        <span className="req">обязательно</span>
       </div>
       <textarea
         id="description"
         aria-labelledby="description-label"
-        className="textarea"
+        className="textarea textarea-content-task"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         maxLength={4000}
+        placeholder="Сюжет, образ, референсы, акценты, ограничения"
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={error ? 'description-error' : undefined}
       />
+      {error ? (
+        <p id="description-error" role="alert" className="field-error">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ContentPresetPicker({
+  presets,
+  selectedPresetId,
+  onApply,
+}: {
+  presets: ContentTaskPreset[];
+  selectedPresetId: string | null;
+  onApply: (preset: ContentTaskPreset) => void;
+}) {
+  return (
+    <div className="task-form-block content-preset-block">
+      <div className="task-form-block-head">
+        <span id="content-preset-label" className="lbl">
+          Шаблон
+        </span>
+      </div>
+      <div className="content-preset-list" role="group" aria-labelledby="content-preset-label">
+        {presets.map((preset) => {
+          const isSelected = selectedPresetId === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              className="btn content-preset-button"
+              aria-pressed={isSelected ? 'true' : undefined}
+              onClick={() => onApply(preset)}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -554,7 +625,6 @@ function SubmitRow({
 export function NewTaskSidebar({
   type,
   topics,
-  users,
   errors,
   topicId,
   setTopicId,
@@ -581,18 +651,17 @@ export function NewTaskSidebar({
   setDurationText,
   photoCountText,
   setPhotoCountText,
+  contentPhotoCountText,
+  setContentPhotoCountText,
+  contentDurationText,
+  setContentDurationText,
   deadlineOn,
   setDeadlineOn,
   priority,
   setPriority,
-  requesterId,
-  setRequesterId,
-  assigneeId,
-  setAssigneeId,
 }: {
   type: TabKey;
   topics: TopicOption[];
-  users: UserOption[];
   errors: Record<string, string>;
   topicId: string;
   setTopicId: (value: string) => void;
@@ -619,14 +688,14 @@ export function NewTaskSidebar({
   setDurationText: (value: string) => void;
   photoCountText: string;
   setPhotoCountText: (value: string) => void;
+  contentPhotoCountText: string;
+  setContentPhotoCountText: (value: string) => void;
+  contentDurationText: string;
+  setContentDurationText: (value: string) => void;
   deadlineOn: string;
   setDeadlineOn: (value: string) => void;
   priority: PriorityValue | null;
   setPriority: (value: PriorityValue | null) => void;
-  requesterId: string;
-  setRequesterId: (value: string) => void;
-  assigneeId: string;
-  setAssigneeId: (value: string) => void;
 }) {
   return (
     <aside className="task-form-side" aria-label="Метаданные задачи">
@@ -636,6 +705,7 @@ export function NewTaskSidebar({
           topicId={topicId}
           setTopicId={setTopicId}
           error={errors.topicId}
+          heading="Категория"
         />
       ) : null}
 
@@ -682,13 +752,13 @@ export function NewTaskSidebar({
 
       {type === 'content_task' ? (
         <>
-          <ContentTeamSection
-            users={users}
-            requesterId={requesterId}
-            setRequesterId={setRequesterId}
-            assigneeId={assigneeId}
-            setAssigneeId={setAssigneeId}
-            error={errors.requesterId}
+          <ContentVolumeSection
+            photoCountText={contentPhotoCountText}
+            setPhotoCountText={setContentPhotoCountText}
+            durationText={contentDurationText}
+            setDurationText={setContentDurationText}
+            photoError={errors.contentPhotoCount}
+            durationError={errors.contentDuration}
           />
           <ContentTimingSection
             deadlineOn={deadlineOn}
@@ -703,21 +773,71 @@ export function NewTaskSidebar({
   );
 }
 
+function ContentVolumeSection({
+  photoCountText,
+  setPhotoCountText,
+  durationText,
+  setDurationText,
+  photoError,
+  durationError,
+}: {
+  photoCountText: string;
+  setPhotoCountText: (value: string) => void;
+  durationText: string;
+  setDurationText: (value: string) => void;
+  photoError?: string;
+  durationError?: string;
+}) {
+  return (
+    <div className="task-form-side-section">
+      <h4>Объем</h4>
+      <div className="task-form-side-row">
+        <Field id="contentPhotoCount" label="Фото" error={photoError}>
+          <input
+            id="contentPhotoCount"
+            className="input tabular"
+            value={photoCountText}
+            onChange={(e) => setPhotoCountText(e.target.value)}
+            placeholder="5-15"
+            aria-invalid={photoError ? 'true' : undefined}
+            aria-describedby={photoError ? 'contentPhotoCount-error' : undefined}
+          />
+        </Field>
+        <Field id="contentDuration" label="Видео, мин" error={durationError}>
+          <input
+            id="contentDuration"
+            className="input tabular"
+            value={durationText}
+            onChange={(e) => setDurationText(e.target.value)}
+            placeholder="5-10"
+            aria-invalid={durationError ? 'true' : undefined}
+            aria-describedby={durationError ? 'contentDuration-error' : undefined}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
 function TopicPicker({
   topics,
   topicId,
   setTopicId,
   error,
+  heading = 'Тема',
+  label = '',
 }: {
   topics: TopicOption[];
   topicId: string;
   setTopicId: (value: string) => void;
   error?: string;
+  heading?: string;
+  label?: string;
 }) {
   return (
     <div className="task-form-side-section">
-      <h4>Тема</h4>
-      <Field id="topic" label="" hideLabel error={error}>
+      <h4>{heading}</h4>
+      <Field id="topic" label={label || heading} hideLabel error={error}>
         <select
           id="topic"
           className="select"
@@ -841,7 +961,7 @@ function CustomPaymentSection({
     <div className="task-form-side-section">
       <h4>Оплата</h4>
       <div className="task-form-side-stack">
-        <div className="task-form-side-row">
+        <div className="task-form-side-row task-form-payment-row">
           <Field id="paymentModel" label="Модель">
             <div className="segmented" role="radiogroup" aria-label="Модель оплаты">
               {(['full', 'unlock'] as const).map((p) => (
@@ -997,59 +1117,6 @@ function CustomTimingSection({
         </div>
 
         <PriorityField priority={priority} setPriority={setPriority} />
-      </div>
-    </div>
-  );
-}
-
-function ContentTeamSection({
-  users,
-  requesterId,
-  setRequesterId,
-  assigneeId,
-  setAssigneeId,
-  error,
-}: {
-  users: UserOption[];
-  requesterId: string;
-  setRequesterId: (value: string) => void;
-  assigneeId: string;
-  setAssigneeId: (value: string) => void;
-  error?: string;
-}) {
-  return (
-    <div className="task-form-side-section">
-      <h4>Команда</h4>
-      <div className="task-form-side-stack">
-        <Field id="requester" label="Заказчик" required error={error}>
-          <select
-            id="requester"
-            className="select"
-            value={requesterId}
-            onChange={(e) => setRequesterId(e.target.value)}
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field id="assignee" label="Исполнитель">
-          <select
-            id="assignee"
-            className="select"
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-          >
-            <option value="">— не указано —</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName}
-              </option>
-            ))}
-          </select>
-        </Field>
       </div>
     </div>
   );

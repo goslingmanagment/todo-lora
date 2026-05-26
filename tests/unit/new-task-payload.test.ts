@@ -8,7 +8,6 @@ import {
 import { MAX_IMAGE_BYTES } from '@/lib/domain/attachmentPolicy';
 
 const topicId = randomUUID();
-const requesterId = 'user-1';
 
 function baseState(overrides: Partial<NewTaskPayloadState> = {}): NewTaskPayloadState {
   return {
@@ -18,8 +17,9 @@ function baseState(overrides: Partial<NewTaskPayloadState> = {}): NewTaskPayload
     priority: 'medium',
     deadlineOn: '2026-05-15',
     description: '',
-    requesterId,
-    assigneeId: '',
+    contentPhotoCountText: '',
+    contentDurationText: '',
+    contentDestination: 'other',
     buyerHandle: '@buyer',
     buyerDisplayName: '',
     platform: 'Fansly',
@@ -74,7 +74,9 @@ describe('new task payload builder', () => {
         type: 'content_task',
         title: '  Пост в Instagram  ',
         description: '  Опубликовать вечером  ',
-        assigneeId: 'lora',
+        contentPhotoCountText: '5-10',
+        contentDurationText: '2',
+        contentDestination: 'reddit',
       }),
     );
 
@@ -85,10 +87,30 @@ describe('new task payload builder', () => {
       topicId,
       title: 'Пост в Instagram',
       description: 'Опубликовать вечером',
+      durationMinMinutes: 2,
+      durationMaxMinutes: 2,
+      photoCountMin: 5,
+      photoCountMax: 10,
+      contentDestination: 'reddit',
+      contentProductionStatus: 'planned',
       priority: 'medium',
       deadlineOn: '2026-05-15',
-      requesterId,
-      assigneeId: 'lora',
+    });
+  });
+
+  it('requires a content task brief', () => {
+    const result = buildNewTaskPayload(
+      baseState({
+        type: 'content_task',
+        title: 'PPV',
+        description: '',
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toMatchObject({
+      description: 'Заполните ТЗ',
     });
   });
 

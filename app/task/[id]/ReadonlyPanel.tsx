@@ -5,21 +5,21 @@ import { formatDateRu } from '@/lib/format/dates';
 import {
   customContentKindLabel,
   formatCustomContentMetric,
+  formatMediaVolume,
   resolvedCustomContentKind,
 } from '@/lib/format/customContent';
-import type { TaskDto, Topic, UserOption } from './_types';
+import { CONTENT_DESTINATION_LABELS_RU } from '@/lib/domain/contentDestination';
+import { CONTENT_PRODUCTION_LABELS_RU } from '@/lib/domain/contentProduction';
+import type { TaskDto, Topic } from './_types';
 
 export function ReadonlyPanel({
   task,
   topic,
-  users,
 }: {
   task: TaskDto;
   topic: Topic | null;
-  users: UserOption[];
 }) {
-  const requester = users.find((u) => u.id === task.requesterId);
-  const assignee = users.find((u) => u.id === task.assigneeId);
+  const mediaVolume = formatMediaVolume(task);
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       {task.description ? (
@@ -41,14 +41,29 @@ export function ReadonlyPanel({
           margin: 0,
         }}
       >
-        <Fact label="Тема">{topic?.name ?? '—'}</Fact>
+        <Fact label={task.type === 'content_task' ? 'Категория' : 'Тема'}>
+          {topic?.name ?? '—'}
+        </Fact>
         <Fact label="Дедлайн" tabular>
           {formatDateRu(task.deadlineOn) ?? '—'}
         </Fact>
         {task.type === 'content_task' ? (
           <>
-            <Fact label="Заказчик">{requester?.displayName ?? '—'}</Fact>
-            <Fact label="Исполнитель">{assignee?.displayName ?? '—'}</Fact>
+            <Fact label="Назначение">
+              {task.contentDestination
+                ? CONTENT_DESTINATION_LABELS_RU[task.contentDestination]
+                : '—'}
+            </Fact>
+            <Fact label="Продакшн">
+              {task.contentProductionStatus
+                ? CONTENT_PRODUCTION_LABELS_RU[task.contentProductionStatus]
+                : '—'}
+            </Fact>
+            {mediaVolume ? (
+              <Fact label="Объем" tabular>
+                {mediaVolume}
+              </Fact>
+            ) : null}
           </>
         ) : null}
       </dl>

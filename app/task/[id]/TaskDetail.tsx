@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { changeStatusAction, deleteTaskAction, setAgreementStateAction } from '@/lib/server/actions';
+import {
+  changeStatusAction,
+  deleteTaskAction,
+  setAgreementStateAction,
+  updateTaskAction,
+} from '@/lib/server/actions';
 import { showToast } from '@/components/Toaster';
 import { DeadlineChip } from '@/components/DeadlineChip';
 import { PriorityDot } from '@/components/PriorityDot';
@@ -16,7 +21,11 @@ import {
   TYPE_LABELS_RU,
   allowedTargets,
 } from '@/lib/fsm/taskStatus';
-import type { AgreementState, TaskStatus } from '@/drizzle/schema/enums';
+import type { AgreementState, ContentProductionStatus, TaskStatus } from '@/drizzle/schema/enums';
+import {
+  CONTENT_PRODUCTION_LABELS_RU,
+  CONTENT_PRODUCTION_STATUSES,
+} from '@/lib/domain/contentProduction';
 import { agreementChipClass, HardDeleteDialog, UpdatedMeta } from './_primitives';
 import { CustomFactsPanel, ReadonlyPanel } from './ReadonlyPanel';
 import { EditPanel } from './EditPanel';
@@ -30,12 +39,11 @@ type Props = {
   topic: Topic | null;
   allTopics: Topic[];
   users: UserOption[];
-  activeUsers: UserOption[];
   attachments: AttachmentDto[];
   events: EventDto[];
 };
 
-export function TaskDetail({ task, topic, allTopics, users, activeUsers, attachments, events }: Props) {
+export function TaskDetail({ task, topic, allTopics, users, attachments, events }: Props) {
   // Read directly from RSC props. After every mutation we call
   // router.refresh(), so initialTask updates within ~50–200 ms; the brief
   // optimistic flash we used to do via local state isn't worth the
@@ -87,6 +95,25 @@ export function TaskDetail({ task, topic, allTopics, users, activeUsers, attachm
         expectedVersion: task.version,
       });
       if (res.ok) {
+        router.refresh();
+      } else if (res.code === 'stale') {
+        showToast('Задачу только что изменили. Обновляем…', { tone: 'error' });
+        router.refresh();
+      } else {
+        showToast(res.error, { tone: 'error' });
+      }
+    });
+  };
+
+  const onSetProductionStatus = (next: ContentProductionStatus) => {
+    startTransition(async () => {
+      const res = await updateTaskAction({
+        id: task.id,
+        expectedVersion: task.version,
+        contentProductionStatus: next,
+      });
+      if (res.ok) {
+        showToast(`Продакшн: ${CONTENT_PRODUCTION_LABELS_RU[next]}`);
         router.refresh();
       } else if (res.code === 'stale') {
         showToast('Задачу только что изменили. Обновляем…', { tone: 'error' });
@@ -245,13 +272,19 @@ export function TaskDetail({ task, topic, allTopics, users, activeUsers, attachm
         <CustomFactsPanel task={task} moneyText={moneyText} />
       ) : null}
 
+      {task.type === 'content_task' ? (
+        <ContentWorkflowPanel
+          productionStatus={task.contentProductionStatus ?? 'planned'}
+          isPending={isPending}
+          onSetProductionStatus={onSetProductionStatus}
+        />
+      ) : null}
+
       <section style={{ marginBottom: '1.5rem' }} aria-label="Детали">
         {editing ? (
           <EditPanel
             task={task}
             allTopics={allTopics}
-            users={users}
-            activeUsers={activeUsers}
             onCancel={() => setEditing(false)}
             onSaved={() => {
               setEditing(false);
@@ -263,7 +296,7 @@ export function TaskDetail({ task, topic, allTopics, users, activeUsers, attachm
           />
         ) : (
           <>
-            <ReadonlyPanel task={task} topic={topic} users={users} />
+            <ReadonlyPanel task={task} topic={topic} />
             <button
               type="button"
               className="btn"
@@ -329,4 +362,43 @@ function statusHeaderChipClass(status: TaskStatus): string {
   if (status === 'done' || status === 'delivered') return 'chip chip-green';
   if (status === 'cancelled') return 'chip chip-gray';
   return 'chip chip-draft';
+}
+
+function ContentWorkflowPanel({
+  productionStatus,
+  isPending,
+  onSetProductionStatus,
+}: {
+  productionStatus: ContentProductionStatus;
+  isPending: boolean;
+  onSetProductionStatus: (next: ContentProductionStatus) => void;
+}) {
+  return (
+    <section
+      className="panel"
+      aria-labelledby="content-workflow-heading"
+      style={{ marginBottom: '1.5rem', display: 'grid', gap: '0.9rem' }}
+    >
+      <div>
+        <h2 id="content-workflow-heading" className="eyebrow" style={{ margin: '0 0 0.55rem' }}>
+          Продакшн
+        </h2>
+        <div className="segmented production-segmented" role="radiogroup" aria-label="Продакшн">
+          {CONTENT_PRODUCTION_STATUSES.map((status) => (
+            <button
+              key={status}
+              type="button"
+              role="radio"
+              className="segmented-item"
+              aria-checked={productionStatus === status}
+              onClick={() => onSetProductionStatus(status)}
+              disabled={isPending}
+            >
+              {CONTENT_PRODUCTION_LABELS_RU[status]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

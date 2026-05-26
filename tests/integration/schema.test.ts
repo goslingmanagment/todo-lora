@@ -29,6 +29,8 @@ describe('schema CHECKs', () => {
         type: 'content_task',
         topicId,
         title: 'bad content_task',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OWNER_ID,
         // Custom-only column on a non-custom row → CHECK should fail
         buyerHandle: '@x',
@@ -44,9 +46,32 @@ describe('schema CHECKs', () => {
         topicId,
         title: 'bad delivered',
         status: 'delivered',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OWNER_ID,
       }),
     ).rejects.toThrow();
+  });
+
+  it('allows content_task row with structured media volume', async () => {
+    const topicId = await getCustomsTopicId();
+    const [row] = await db
+      .insert(tasks)
+      .values({
+        type: 'content_task',
+        topicId,
+        title: 'content with volume',
+        description: 'brief',
+        contentDestination: 'of_ppv',
+        contentProductionStatus: 'planned',
+        createdBy: OWNER_ID,
+        durationMinSeconds: 300,
+        durationMaxSeconds: 600,
+        photoCountMin: 5,
+        photoCountMax: 15,
+      })
+      .returning();
+    expect(row?.id).toBeTruthy();
   });
 
   it('allows valid custom row with money/duration constraints', async () => {
@@ -160,6 +185,8 @@ describe('schema CHECKs', () => {
         type: 'content_task',
         topicId,
         title: 'attach test',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OWNER_ID,
       })
       .returning();
@@ -197,6 +224,8 @@ describe('triggers', () => {
         type: 'content_task',
         topicId,
         title: 'updated_at test',
+        contentDestination: 'other',
+        contentProductionStatus: 'planned',
         createdBy: OWNER_ID,
       })
       .returning();
@@ -228,6 +257,8 @@ describe('triggers', () => {
           type: 'content_task',
           topicId,
           title: 'no-NOTIFY test',
+          contentDestination: 'other',
+          contentProductionStatus: 'planned',
           createdBy: OWNER_ID,
         })
         .returning({ id: tasks.id });
