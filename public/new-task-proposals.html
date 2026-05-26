@@ -1,0 +1,1238 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>New ТЗ — предложения по форме</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --font-serif:'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:'JetBrains Mono', ui-monospace, monospace;
+
+  --color-paper:#f7f4ec;
+  --color-paper-2:#f1ece1;
+  --color-card:#fbf8f1;
+  --color-card-hover:#f5efe2;
+  --color-ink:#2a2520;
+  --color-ink-2:#463f37;
+  --color-ink-3:#5b5346;
+  --color-ink-4:#6b5f4f;
+  --color-line:#e8dfd0;
+  --color-line-strong:#d8cdb8;
+  --color-accent:#b8553a;
+  --color-accent-soft:#e8c4b6;
+  --color-accent-tint:#f4dfd6;
+  --color-state-red:#9e4131;
+  --color-state-red-bg:#f4dad3;
+  --color-state-amber:#855a12;
+  --color-state-amber-bg:#f5e3c4;
+  --color-state-green:#3f6539;
+  --color-state-green-bg:#dceacc;
+  --color-state-gray:#6a6055;
+  --color-state-gray-bg:#e6dfd1;
+  --radius-card:14px;
+  --radius-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--color-paper);color:var(--color-ink);font-family:var(--font-sans);font-size:.9375rem;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-attachment:fixed;background-size:200px 200px;
+}
+h1,h2,h3,h4{font-family:var(--font-serif);letter-spacing:-.01em;font-weight:500;margin:0}
+
+.tabular{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--color-ink-4);font-weight:500}
+.muted{color:var(--color-ink-3)}
+.muted-2{color:var(--color-ink-4)}
+
+/* page */
+.wrap{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 5rem}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--color-line)}
+.page-head h1{font-size:1.7rem}
+.page-head .crumb{font-size:.85rem;color:var(--color-ink-3)}
+
+/* variant switcher */
+.switcher{position:sticky;top:0;z-index:5;background:var(--color-paper);padding:.75rem 0;border-bottom:1px solid var(--color-line);margin-bottom:1.5rem}
+.switcher-inner{display:flex;gap:.25rem;flex-wrap:wrap;align-items:center}
+.switcher .lbl{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--color-ink-4);margin-right:.5rem}
+.switcher button{appearance:none;border:1px solid var(--color-line);background:var(--color-card);color:var(--color-ink-3);padding:.4rem .9rem;border-radius:var(--radius-pill);font-family:inherit;font-size:.85rem;cursor:pointer}
+.switcher button:hover{background:var(--color-card-hover)}
+.switcher button.active{background:var(--color-accent);color:#fdf8f4;border-color:var(--color-accent)}
+.switcher .group-divider{width:1px;height:22px;background:var(--color-line);margin:0 .5rem;align-self:center}
+
+/* shared form atoms */
+.label{display:block;font-size:.78rem;color:var(--color-ink-3);margin-bottom:.25rem;font-weight:500}
+.label.req::after{content:' *';color:var(--color-accent)}
+.label-row{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.25rem}
+.input,.textarea,.select{width:100%;padding:.5rem .7rem;border-radius:9px;border:1px solid var(--color-line);background:#fff;color:var(--color-ink);font-family:inherit;font-size:.92rem;transition:border-color 120ms ease}
+.input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--color-accent)}
+.input.tabular{font-variant-numeric:tabular-nums}
+.textarea{min-height:5rem;resize:vertical}
+.textarea.lg{min-height:7rem}
+.textarea.xl{min-height:11rem}
+
+.segmented{display:inline-flex;flex-wrap:wrap;border:1px solid var(--color-line);border-radius:var(--radius-pill);padding:.18rem;gap:.1rem;background:color-mix(in srgb, var(--color-paper) 70%, transparent)}
+.segmented-item{appearance:none;border:1px solid transparent;background:transparent;color:var(--color-ink-3);padding:.3rem .75rem;border-radius:var(--radius-pill);font-size:.82rem;font-family:inherit;cursor:pointer}
+.segmented-item:hover{color:var(--color-ink)}
+.segmented-item.on{background:var(--color-accent);color:#fdf8f4;border-color:var(--color-accent)}
+.segmented-sm .segmented-item{padding:.25rem .65rem;font-size:.78rem}
+
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:var(--radius-pill);font-size:.9rem;border:1px solid var(--color-line);background:var(--color-card);color:var(--color-ink);cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--color-card-hover)}
+.btn-primary{background:var(--color-accent);color:#fdf8f4;border-color:var(--color-accent)}
+.btn-primary:hover{background:#a64a32;border-color:#a64a32}
+.btn-quiet{background:transparent;border-color:transparent;color:var(--color-ink-3)}
+.btn-sm{padding:.3rem .7rem;font-size:.8rem}
+
+.panel{background:color-mix(in srgb, var(--color-paper-2) 60%, transparent);border:1px solid var(--color-line);border-radius:var(--radius-card);padding:.85rem 1rem}
+.panel-soft{background:color-mix(in srgb, var(--color-paper-2) 40%, transparent);border:1px solid color-mix(in srgb, var(--color-line) 70%, transparent);border-radius:var(--radius-card);padding:.85rem 1rem}
+
+.chip{display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .5rem;border-radius:var(--radius-pill);font-size:.72rem;border:1px solid transparent;background:var(--color-state-gray-bg);color:var(--color-state-gray)}
+.chip-green{background:var(--color-state-green-bg);color:var(--color-state-green)}
+.chip-amber{background:var(--color-state-amber-bg);color:var(--color-state-amber)}
+.chip-red{background:var(--color-state-red-bg);color:var(--color-state-red)}
+.chip-new{background:var(--color-accent-tint);color:var(--color-accent);border-color:var(--color-accent-soft)}
+
+/* heading style at top of variant */
+.variant-head{display:flex;align-items:baseline;gap:1rem;margin-bottom:.6rem;padding:0;flex-wrap:wrap}
+.variant-head .v-num{font-family:var(--font-serif);font-size:1.6rem;letter-spacing:-.01em;color:var(--color-ink)}
+.variant-head .v-title{font-size:.9rem;color:var(--color-ink-3)}
+.variant-note{margin:0 0 1rem;padding:.6rem .9rem;background:#fff8;border-left:3px solid var(--color-accent-soft);border-radius:0 8px 8px 0;font-size:.85rem;color:var(--color-ink-2)}
+.variant-note b{color:var(--color-ink)}
+.variant-note ul{margin:.35rem 0 0;padding-left:1.1rem}
+.variant-note li{margin:.15rem 0}
+
+.variant{display:none;animation:fade .18s ease-out}
+.variant.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1}}
+
+/* sidebar form (mirror of real task-form-grid) */
+.form-grid{display:grid;grid-template-columns:1fr 320px;gap:1.1rem;align-items:start}
+@media (max-width:900px){.form-grid{grid-template-columns:1fr}}
+
+.form-main{background:var(--color-card);border:1px solid var(--color-line);border-radius:var(--radius-card);padding:1.25rem 1.5rem}
+.form-side{background:var(--color-paper-2);border:1px solid var(--color-line);border-radius:var(--radius-card);padding:.95rem 1.05rem;align-self:start;position:sticky;top:5rem}
+.side-section + .side-section{margin-top:.95rem;padding-top:.95rem;border-top:1px solid var(--color-line)}
+.side-section h4{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--color-ink-4);font-weight:500;margin-bottom:.5rem;font-family:var(--font-sans)}
+.side-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.side-stack{display:flex;flex-direction:column;gap:.5rem}
+
+.title-input-serif{width:100%;border:none;background:transparent;font-family:var(--font-serif);font-size:1.55rem;font-weight:500;color:var(--color-ink);padding:.1rem 0;letter-spacing:-.01em}
+.title-input-serif:focus{outline:none}
+.title-input-serif::placeholder{color:#a89c89}
+
+.preset-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem}
+.preset-btn{appearance:none;border:1px solid var(--color-line);background:var(--color-card);color:var(--color-ink-2);padding:.35rem .85rem;border-radius:var(--radius-pill);font-family:inherit;font-size:.85rem;cursor:pointer}
+.preset-btn:hover{background:var(--color-card-hover)}
+.preset-btn.on{background:var(--color-accent);color:#fdf8f4;border-color:var(--color-accent)}
+.preset-btn .new-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--color-accent);margin-right:.25rem;vertical-align:middle}
+
+.block{margin-top:1.1rem}
+.block-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;flex-wrap:wrap}
+.block-head .icon{font-size:1rem}
+.block-head .lbl{font-weight:500;color:var(--color-ink);font-size:.95rem}
+.block-head .opt{font-size:.72rem;color:var(--color-ink-4)}
+.block-head .req{font-size:.72rem;color:var(--color-accent)}
+.block-head a.guide-link{margin-left:auto;font-size:.78rem;color:var(--color-accent);text-decoration:none;display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:var(--radius-pill);border:1px solid var(--color-accent-soft);background:var(--color-accent-tint)}
+.block-head a.guide-link:hover{background:var(--color-accent-soft)}
+
+.actions-row{display:flex;align-items:center;gap:1rem;margin-top:1.5rem;padding-top:1.1rem;border-top:1px solid var(--color-line)}
+.back-link{color:var(--color-ink-3);text-decoration:none}
+.back-link:hover{color:var(--color-ink)}
+
+/* numbered attachments */
+.refs-grid{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem}
+.ref-row{display:grid;grid-template-columns:32px 1fr auto;gap:.6rem;align-items:flex-start;background:var(--color-card);border:1px solid var(--color-line);border-radius:10px;padding:.55rem .7rem}
+.ref-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--color-paper-2);color:var(--color-ink-3);font-family:var(--font-serif);font-size:.95rem;line-height:1}
+.ref-body{display:grid;gap:.35rem}
+.ref-url{font-family:var(--font-mono);font-size:.78rem;color:var(--color-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref-caption{width:100%;border:none;background:transparent;font-family:inherit;font-size:.88rem;color:var(--color-ink);padding:0;resize:none}
+.ref-caption:focus{outline:none}
+.ref-handle{cursor:grab;color:var(--color-ink-4);font-size:1rem;padding:0 .25rem}
+.ref-thumb{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg, #cdb7a4, #a89c89);background-size:cover;background-position:center;flex:none}
+
+/* attached file thumb row */
+.file-row{display:grid;grid-template-columns:32px auto 1fr;gap:.6rem;align-items:center;padding:.45rem .55rem;background:var(--color-card);border:1px solid var(--color-line);border-radius:10px}
+
+/* dual deadline */
+.dual-deadline{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.dual-deadline .leg{background:#fff;border:1px solid var(--color-line);border-radius:10px;padding:.55rem .65rem}
+.dual-deadline .leg-num{font-family:var(--font-serif);font-size:.78rem;color:var(--color-ink-3);margin-bottom:.2rem;display:flex;align-items:center;gap:.35rem}
+.dual-deadline .leg-num .dot{width:6px;height:6px;border-radius:50%;background:var(--color-accent)}
+.dual-deadline .leg input{border:none;background:transparent;padding:0;font-family:inherit;font-size:.9rem;width:100%}
+.dual-deadline .leg input:focus{outline:none}
+.dual-deadline-toggle{margin-top:.35rem;display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--color-ink-4);cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
+.dual-deadline-toggle:hover{color:var(--color-accent)}
+
+/* structured life-photo description */
+.struct-grid{display:grid;gap:.6rem;margin-top:.3rem}
+.struct-row{display:grid;grid-template-columns:90px 1fr;gap:.6rem;align-items:start}
+.struct-row label{font-size:.82rem;color:var(--color-ink-3);padding-top:.5rem}
+.struct-row input,.struct-row textarea{font-size:.88rem}
+.struct-row textarea{min-height:2.3rem;resize:vertical}
+
+/* datalist faux dropdown */
+.datalist-box{position:relative}
+.datalist-suggestions{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--color-line-strong);border-radius:10px;padding:.3rem;font-size:.85rem;box-shadow:0 8px 20px rgba(60,40,20,.1);z-index:4}
+.datalist-suggestions .item{display:grid;grid-template-columns:auto 1fr auto;gap:.6rem;padding:.35rem .55rem;border-radius:6px;cursor:pointer;align-items:center}
+.datalist-suggestions .item:hover,.datalist-suggestions .item.hl{background:var(--color-paper-2)}
+.datalist-suggestions .item .platform{font-size:.7rem;color:var(--color-ink-4);text-transform:uppercase;letter-spacing:.08em}
+.datalist-suggestions .item .handle{font-family:var(--font-mono);font-size:.8rem;color:var(--color-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.datalist-suggestions .item .count{font-size:.7rem;color:var(--color-ink-4)}
+.datalist-hint{font-size:.7rem;color:var(--color-ink-4);padding:.3rem .55rem .15rem}
+
+/* pay-note */
+.pay-note-row{margin-top:.5rem}
+.pay-note-row input{font-size:.85rem}
+.pay-note-hints{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.3rem}
+.pay-note-hint{appearance:none;border:1px dashed var(--color-line);background:transparent;color:var(--color-ink-4);font-size:.7rem;padding:.15rem .5rem;border-radius:var(--radius-pill);font-family:inherit;cursor:pointer}
+.pay-note-hint:hover{background:var(--color-paper-2);color:var(--color-ink-2)}
+
+/* legend */
+.legend{display:flex;gap:.6rem;flex-wrap:wrap;margin:0 0 .8rem;font-size:.75rem;color:var(--color-ink-3)}
+.legend .key{display:inline-flex;align-items:center;gap:.3rem}
+.legend .key .dot{width:10px;height:10px;border-radius:50%}
+.legend .key .dot.new{background:var(--color-accent)}
+.legend .key .dot.same{background:var(--color-ink-4);opacity:.4}
+
+/* type tabs above form (mirror current) */
+.type-tabs-row{margin-bottom:1.1rem}
+
+/* helper line */
+.hint{font-size:.72rem;color:var(--color-ink-4);margin-top:.25rem}
+
+/* preset badge in title */
+.preset-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--color-ink-4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem}
+
+/* mini explainer arrow callout */
+.callout{position:relative;background:var(--color-state-amber-bg);color:var(--color-state-amber);padding:.4rem .7rem;border-radius:8px;font-size:.78rem;display:inline-flex;align-items:center;gap:.4rem;margin-top:.5rem}
+.callout::before{content:'';position:absolute;top:-6px;left:18px;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:6px solid var(--color-state-amber-bg)}
+
+/* highlight ring around a NEW element */
+.is-new{position:relative}
+.is-new::after{content:'NEW';position:absolute;top:-9px;right:-9px;background:var(--color-accent);color:#fdf8f4;font-size:.62rem;font-weight:600;letter-spacing:.06em;padding:.1rem .35rem;border-radius:var(--radius-pill);transform:rotate(2deg);z-index:2}
+
+/* preview card mini */
+.preview-card{background:#fff;border:1px solid var(--color-line);border-radius:12px;padding:.75rem .9rem;font-size:.85rem}
+.preview-card .pc-head{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline;font-family:var(--font-serif);font-size:1rem}
+.preview-card .pc-meta{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem;font-size:.72rem;color:var(--color-ink-4)}
+.preview-card .pc-text{margin-top:.4rem;color:var(--color-ink-2);font-size:.82rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* footer (summary of all proposals) */
+.summary{margin-top:2rem;background:var(--color-card);border:1px solid var(--color-line);border-radius:var(--radius-card);padding:1.1rem 1.4rem}
+.summary h2{font-size:1.3rem;margin-bottom:.6rem}
+.summary table{width:100%;border-collapse:collapse;font-size:.86rem}
+.summary th{text-align:left;font-weight:500;font-family:var(--font-sans);color:var(--color-ink-3);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--color-line);padding:.5rem .4rem}
+.summary td{padding:.55rem .4rem;border-bottom:1px solid var(--color-line);vertical-align:top}
+.summary tr:last-child td{border-bottom:none}
+.summary .e-cost{white-space:nowrap}
+.summary .e-prio{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">design proposals · форма ТЗ</div>
+      <h1>Предложения по изменению формы создания ТЗ</h1>
+    </div>
+    <div class="muted small" style="max-width:280px;text-align:right">Все данные — из вашего реального ТГ-чата за фев–май 2026.</div>
+  </div>
+
+  <div class="switcher">
+    <div class="switcher-inner">
+      <span class="lbl">показать</span>
+      <button class="active" data-v="now">Сейчас</button>
+      <span class="group-divider"></span>
+      <span class="lbl">контент:</span>
+      <button data-v="c1">C1 · Гайд + numbered refs</button>
+      <button data-v="c2">C2 · Сдвоенные дедлайны</button>
+      <button data-v="c3">C3 · Life-photo структура</button>
+      <span class="group-divider"></span>
+      <span class="lbl">custom:</span>
+      <button data-v="u1">U1 · Имя в кадре + datalist</button>
+      <button data-v="u2">U2 · Заметка к оплате</button>
+      <span class="group-divider"></span>
+      <button data-v="all">Всё вместе</button>
+    </div>
+  </div>
+
+  <p class="legend">
+    <span class="key"><span class="dot new"></span>новое / изменено</span>
+    <span class="key"><span class="dot same"></span>как сейчас</span>
+    <span class="key">источник примеров — ТГ-чат «Lora контент»</span>
+  </p>
+
+  <!-- ====================== NOW: baseline mirror ====================== -->
+  <section class="variant active" id="now">
+    <div class="variant-head">
+      <div class="v-num">0</div>
+      <div class="v-title">Текущая форма — для сравнения. Пресет «PPV-бандл», заполненный.</div>
+    </div>
+    <p class="variant-note">
+      Базовое состояние из <code>app/new/NewTaskForm.tsx</code>. Шаблон подставляет описание-«рыбу»: «Задача / Контент / примечания». Ссылка на гайд, объём и дедлайны живут внутри textarea вперемешку с пояснениями.
+    </p>
+
+    <div class="type-tabs-row">
+      <div class="segmented segmented-sm">
+        <button class="segmented-item">Custom</button>
+        <button class="segmented-item on">Контент</button>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <input class="title-input-serif" value="PPV-бандл">
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">Шаблон</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-btn on">PPV-бандл</button>
+            <button class="preset-btn">Photo set</button>
+            <button class="preset-btn">Life-photo</button>
+            <button class="preset-btn">SFW / Reddit</button>
+            <button class="preset-btn">FYP</button>
+            <button class="preset-btn">Chat pack</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">ТЗ / примечания</span>
+            <span class="req">обязательно</span>
+          </div>
+          <textarea class="textarea xl">Задача:
+Снять комплект для платной рассылки или стены: тизерный фотосет + короткое видео.
+
+Контент / примечания:
+- сюжет и ключевые акценты
+- образ / реквизит
+- референсы и что обязательно учесть</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📎</span>
+            <span class="lbl">Вложения</span>
+            <span class="opt">0/10</span>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm">+ Ссылка</button>
+            <button class="btn btn-sm">+ Картинки</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать задачу</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Категория</h4>
+          <select class="select"><option>PPV</option></select>
+        </div>
+        <div class="side-section">
+          <h4>Объём</h4>
+          <div class="side-row">
+            <div>
+              <label class="label">Фото</label>
+              <input class="input tabular" placeholder="5-15" value="5-15">
+            </div>
+            <div>
+              <label class="label">Видео, мин</label>
+              <input class="input tabular" placeholder="5-10" value="5-10">
+            </div>
+          </div>
+        </div>
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <label class="label req">Дедлайн</label>
+          <input class="input tabular" type="date">
+          <label class="label" style="margin-top:.5rem">Приоритет</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">Высокий</button>
+            <button class="segmented-item on">Средний</button>
+            <button class="segmented-item">Низкий</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== C1: GUIDE LINK + NUMBERED REFS ====================== -->
+  <section class="variant" id="c1">
+    <div class="variant-head">
+      <div class="v-num">C1</div>
+      <div class="v-title">Гайд-ссылка в пресете + нумерованные референсы. Самые дешёвые улучшения.</div>
+    </div>
+    <p class="variant-note">
+      <b>Что меняется:</b>
+      <ul>
+        <li><b>Гайд-ссылка</b> вшита в пресет (PPV / Photo set / Life-photo) — отображается pill-кнопкой рядом с описанием. Не дублируется в текст ТЗ.</li>
+        <li><b>Вложения с номерами</b> — каждый референс показывает <span class="chip chip-new">№1</span>, <span class="chip chip-new">№2</span>… можно перетаскивать. Это формат брифов Дианы («1. Повторить, если позволяет гибкость», «2. Повторить, так же в чулках…»).</li>
+        <li><b>Описание-«рыба»</b> очищено от ссылки на гайд и от «возьми идею из гайда» — это видно по pill-кнопке.</li>
+      </ul>
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <div class="preset-badge">📦 пресет</div>
+        <input class="title-input-serif" value="PPV-бандл · 22 мая">
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">Шаблон</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-btn on">PPV-бандл</button>
+            <button class="preset-btn">Photo set</button>
+            <button class="preset-btn">Life-photo</button>
+            <button class="preset-btn">SFW / Reddit</button>
+            <button class="preset-btn">FYP</button>
+            <button class="preset-btn">Chat pack</button>
+            <button class="preset-btn" style="border-style:dashed"><span class="new-dot"></span>Instagram</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">ТЗ / примечания</span>
+            <span class="req">обязательно</span>
+            <a class="guide-link is-new" href="https://accidental-cephalopod-850.notion.site/PPV-1b9fc95fd8f380ff805beb60584279fb" target="_blank">📖 Гайд по PPV ↗</a>
+          </div>
+          <textarea class="textarea lg">Снять комплект для платной рассылки или стены: тизерный фотосет + короткое видео.
+
+Идея — из гайда или своя. Уточнения и акценты — ниже в референсах.</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📎</span>
+            <span class="lbl">Вложения и референсы</span>
+            <span class="opt">3/10</span>
+          </div>
+
+          <div class="refs-grid is-new">
+            <div class="ref-row">
+              <span class="ref-handle">⋮⋮</span>
+              <span class="ref-num">1</span>
+              <div class="ref-body">
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="ref-thumb" style="background-image:linear-gradient(135deg,#d2bca8,#a89c89)"></div>
+                  <div style="flex:1;min-width:0">
+                    <input class="ref-caption" value="Повторить, если позволяет гибкость">
+                    <div class="ref-url">ref_chulki_01.jpg</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm">×</button>
+            </div>
+
+            <div class="ref-row">
+              <span class="ref-handle">⋮⋮</span>
+              <span class="ref-num">2</span>
+              <div class="ref-body">
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="ref-thumb" style="background-image:linear-gradient(135deg,#c8a896,#967e6c)"></div>
+                  <div style="flex:1;min-width:0">
+                    <input class="ref-caption" value="Повторить, так же в чулках и трусиках">
+                    <div class="ref-url">ref_chulki_02.jpg</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm">×</button>
+            </div>
+
+            <div class="ref-row">
+              <span class="ref-handle">⋮⋮</span>
+              <span class="ref-num">3</span>
+              <div class="ref-body">
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="ref-thumb" style="background-image:linear-gradient(135deg,#b89886,#7f6555)"></div>
+                  <div style="flex:1;min-width:0">
+                    <input class="ref-caption" value="Два видео: одно чулки+трусики, второе чулки без трусиков">
+                    <div class="ref-url">ref_chulki_03.jpg</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm">×</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.5rem;margin-top:.4rem">
+            <button class="btn btn-sm">+ Ссылка</button>
+            <button class="btn btn-sm">+ Картинки</button>
+          </div>
+          <div class="hint">Подписи к каждому референсу пронумерованы и попадают в карточку задачи как чек-лист.</div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать задачу</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Категория</h4>
+          <select class="select"><option>PPV</option></select>
+        </div>
+        <div class="side-section">
+          <h4>Объём</h4>
+          <div class="side-row">
+            <div>
+              <label class="label">Фото</label>
+              <input class="input tabular" placeholder="5-15" value="5-15">
+            </div>
+            <div>
+              <label class="label">Видео, мин</label>
+              <input class="input tabular" placeholder="5-10" value="5-10">
+            </div>
+          </div>
+        </div>
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <label class="label req">Дедлайн</label>
+          <input class="input tabular" type="date" value="2026-05-22">
+          <label class="label" style="margin-top:.5rem">Приоритет</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">Высокий</button>
+            <button class="segmented-item on">Средний</button>
+            <button class="segmented-item">Низкий</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== C2: DUAL DEADLINE ====================== -->
+  <section class="variant" id="c2">
+    <div class="variant-head">
+      <div class="v-num">C2</div>
+      <div class="v-title">Сдвоенный дедлайн для PPV / Photo set — отражает реальный шаблон «первый бандл, второй бандл».</div>
+    </div>
+    <p class="variant-note">
+      <b>Что меняется:</b>
+      <ul>
+        <li>Для пресетов <b>PPV-бандл</b> и <b>Photo set</b> сайдбар показывает <b>«Этап 1»</b> и <b>«Этап 2»</b> вместо одного дедлайна — потому что в чате Диана всегда даёт два срока: «первый бандл до 22 мая, второй до 29».</li>
+        <li>Для остальных пресетов остаётся один дедлайн.</li>
+        <li>Кнопка <span class="chip chip-new">+ ещё этап</span> позволяет включить второй дедлайн в любом другом типе.</li>
+        <li>Объём «5–15 фото / 5–10 мин» применим к <b>каждому этапу</b>, не суммарно — это уточнено в тексте.</li>
+      </ul>
+      Требует миграцию (добавить <code>deadline_on_2</code> или таблицу <code>milestones</code>) — самое заметное улучшение workflow.
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <div class="preset-badge">📦 пресет</div>
+        <input class="title-input-serif" value="PPV-бандл · нед. 22 мая">
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">Шаблон</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-btn on">PPV-бандл</button>
+            <button class="preset-btn">Photo set</button>
+            <button class="preset-btn">Life-photo</button>
+            <button class="preset-btn">SFW / Reddit</button>
+            <button class="preset-btn">FYP</button>
+            <button class="preset-btn">Chat pack</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">ТЗ / примечания</span>
+            <span class="req">обязательно</span>
+            <a class="guide-link" href="#">📖 Гайд по PPV ↗</a>
+          </div>
+          <textarea class="textarea lg">Снять 2 комплекта для платной рассылки (PPV):
+• фотосет (5–15 фото) — тизерные, для прогрева
+• короткое видео (5–10 мин)
+
+Идея — из гайда или своя.</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📎</span>
+            <span class="lbl">Вложения и референсы</span>
+            <span class="opt">0/10</span>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm">+ Ссылка</button>
+            <button class="btn btn-sm">+ Картинки</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать задачу</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Категория</h4>
+          <select class="select"><option>PPV</option></select>
+        </div>
+        <div class="side-section">
+          <h4>Объём <span class="chip" style="margin-left:.4rem">на каждый этап</span></h4>
+          <div class="side-row">
+            <div>
+              <label class="label">Фото</label>
+              <input class="input tabular" value="5-15">
+            </div>
+            <div>
+              <label class="label">Видео, мин</label>
+              <input class="input tabular" value="5-10">
+            </div>
+          </div>
+        </div>
+        <div class="side-section is-new">
+          <h4>Тайминг</h4>
+          <div class="dual-deadline">
+            <div class="leg">
+              <div class="leg-num"><span class="dot"></span>Этап 1</div>
+              <input type="date" value="2026-05-22">
+            </div>
+            <div class="leg">
+              <div class="leg-num"><span class="dot" style="background:var(--color-state-amber)"></span>Этап 2</div>
+              <input type="date" value="2026-05-29">
+            </div>
+          </div>
+          <button class="dual-deadline-toggle">× убрать второй этап</button>
+          <label class="label" style="margin-top:.7rem">Приоритет</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">Высокий</button>
+            <button class="segmented-item on">Средний</button>
+            <button class="segmented-item">Низкий</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="callout" style="margin-left:.5rem">
+      В фиде такая задача отображается как одна карточка с двумя срезами по дате — «22 мая ✓ · 29 мая ⏳».
+    </div>
+  </section>
+
+  <!-- ====================== C3: LIFE-PHOTO STRUCTURE ====================== -->
+  <section class="variant" id="c3">
+    <div class="variant-head">
+      <div class="v-num">C3</div>
+      <div class="v-title">Life-photo: структурированная заготовка из реальных подразделов Дианы.</div>
+    </div>
+    <p class="variant-note">
+      <b>Что меняется:</b>
+      <ul>
+        <li>Для пресета <b>Life-photo</b> описание разворачивается в 5 коротких полей: <b>Тип / Свет / Одежда / Подача / Сюжеты</b> — это дословные подзаголовки из брифов Дианы.</li>
+        <li>Каждое поле — одна короткая строка, не блок текста. Заранее заполнено стандартом, можно дописывать «отличия».</li>
+        <li>Под полями — кнопка <span class="chip chip-new">+ свободный текст</span> для всего нестандартного.</li>
+        <li>Без миграции: при сохранении 5 полей конкатенируются в обычный <code>description</code>. Это UI-надстройка над одним полем.</li>
+      </ul>
+      <b>Осторожно:</b> похожее уже пытались сделать (<code>shot_list</code>, миграция 0013) и откатили. Поэтому здесь — <b>только для Life-photo</b>, не для всех пресетов.
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <div class="preset-badge">📷 пресет</div>
+        <input class="title-input-serif" value="Life-photo · до 24 мая">
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">Шаблон</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-btn">PPV-бандл</button>
+            <button class="preset-btn">Photo set</button>
+            <button class="preset-btn on">Life-photo</button>
+            <button class="preset-btn">SFW / Reddit</button>
+            <button class="preset-btn">FYP</button>
+            <button class="preset-btn">Chat pack</button>
+          </div>
+        </div>
+
+        <div class="block is-new">
+          <div class="block-head">
+            <span class="lbl">Бриф (Life-photo)</span>
+            <span class="opt">10–20 фото на 2–3 сюжета</span>
+          </div>
+
+          <div class="struct-grid">
+            <div class="struct-row">
+              <label>Тип</label>
+              <input class="input" value="Естественные фото без позирования и ретуши">
+            </div>
+            <div class="struct-row">
+              <label>Свет</label>
+              <input class="input" value="Естественный или мягкий комнатный">
+            </div>
+            <div class="struct-row">
+              <label>Одежда</label>
+              <input class="input" value="Домашняя; без обнажёнки или лёгкий намёк (рубашка, плед, полотенце)">
+            </div>
+            <div class="struct-row">
+              <label>Подача</label>
+              <input class="input" value="Будто сфоткала себя в моменте">
+            </div>
+            <div class="struct-row">
+              <label>Сюжеты</label>
+              <textarea class="textarea" rows="3">Лежу на кровати; с кружкой; после душа с полотенцем; у окна, на кухне, у зеркала; досуг, еда, аутфиты + мини-сеты для ленты</textarea>
+            </div>
+          </div>
+
+          <button class="btn btn-sm" style="margin-top:.5rem">+ свободный текст / отличия от стандарта</button>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📎</span>
+            <span class="lbl">Вложения</span>
+            <span class="opt">0/10</span>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm">+ Ссылка</button>
+            <button class="btn btn-sm">+ Картинки</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать задачу</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Категория</h4>
+          <select class="select"><option>Life</option></select>
+        </div>
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <label class="label req">Дедлайн</label>
+          <input class="input tabular" type="date" value="2026-05-24">
+          <label class="label" style="margin-top:.5rem">Приоритет</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">Высокий</button>
+            <button class="segmented-item on">Средний</button>
+            <button class="segmented-item">Низкий</button>
+          </div>
+        </div>
+        <div class="side-section">
+          <h4 class="muted-2">Объём</h4>
+          <div class="muted-2" style="font-size:.78rem">Скрыт: для Life-photo количество задаётся внутри брифа.</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== U1: BUYER DATALIST + FAN NAME ====================== -->
+  <section class="variant" id="u1">
+    <div class="variant-head">
+      <div class="v-num">U1</div>
+      <div class="v-title">Custom: имя для обращения в кадре + автоподсказка по повторным покупателям.</div>
+    </div>
+    <p class="variant-note">
+      <b>Что меняется:</b>
+      <ul>
+        <li><b>«Имя для обращения в кадре»</b> — отдельное поле под ником. В чате почти каждый custom-бриф содержит строку «Имя фана: Brandon / Marvel / Sam / Chris»; используется в репликах модели («hey Bob, do you like me Bob?»).</li>
+        <li><b>Автоподсказка по нику</b> — повторные покупатели (arian_15 — 4 раза, jamesjamesjamesjames — 3, user863848546158272512 — 3). При вводе подтягивает платформу и имя.</li>
+        <li>Подсказка показывает количество предыдущих заказов (соц-доказательство, помогает узнать «фана-постоянника»).</li>
+      </ul>
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <h2 style="margin-bottom:.7rem">Custom ТЗ</h2>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">🎥</span>
+            <span class="lbl">Описание задания</span>
+            <span class="opt">опционально</span>
+          </div>
+          <textarea class="textarea lg" placeholder="Что нужно снять, сценарий, ключевые акценты">Стриптиз, медленный тизинг (помять грудь, пораздвигать ноги). Затем pussy play + дилдо. В конце — сквирт. Имя в начале и в конце.</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">👗</span>
+            <span class="lbl">Одежда</span>
+            <span class="opt">опционально</span>
+          </div>
+          <input class="input" value="Аутфит со скрина (см. вложение №1)">
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📝</span>
+            <span class="lbl">Заметки</span>
+            <span class="opt">опционально</span>
+          </div>
+          <input class="input" value="Сквирт обязателен. Маска ковидная.">
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать ТЗ</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Детали</h4>
+          <div class="side-stack">
+            <div>
+              <label class="label">Платформа</label>
+              <div class="segmented segmented-sm">
+                <button class="segmented-item">Fansly</button>
+                <button class="segmented-item on">OF</button>
+                <button class="segmented-item">Other</button>
+              </div>
+            </div>
+            <div class="datalist-box is-new">
+              <label class="label req">Ник / ссылка</label>
+              <input class="input" value="arian_15">
+              <div class="datalist-suggestions">
+                <div class="datalist-hint">Повторные покупатели</div>
+                <div class="item hl">
+                  <span class="platform">OF</span>
+                  <span class="handle">onlyfans.com/arian_15</span>
+                  <span class="count">×4</span>
+                </div>
+                <div class="item">
+                  <span class="platform">OF</span>
+                  <span class="handle">onlyfans.com/jamesjamesjamesjames</span>
+                  <span class="count">×3</span>
+                </div>
+                <div class="item">
+                  <span class="platform">Fansly</span>
+                  <span class="handle">fansly.com/user863848546158272512</span>
+                  <span class="count">×3</span>
+                </div>
+              </div>
+            </div>
+            <div class="is-new" style="margin-top:1.4rem">
+              <label class="label">Имя для обращения в кадре</label>
+              <input class="input" placeholder="Bob, Marvel, Chris…" value="Arian">
+              <div class="hint">Имя фана, которое модель произносит в видео. Не показывается покупателю в текст брифа.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-section">
+          <h4>Оплата</h4>
+          <div class="side-row">
+            <div>
+              <label class="label">Модель</label>
+              <div class="segmented segmented-sm">
+                <button class="segmented-item on">Full</button>
+                <button class="segmented-item">Unlock</button>
+              </div>
+            </div>
+            <div>
+              <label class="label req">Сумма, $</label>
+              <input class="input tabular" value="510">
+            </div>
+          </div>
+          <label class="label" style="margin-top:.5rem">Статус оплаты</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">100%</button>
+            <button class="segmented-item">50/50</button>
+            <button class="segmented-item">75/25</button>
+            <button class="segmented-item on">Своя</button>
+          </div>
+          <label class="label" style="margin-top:.4rem">Получено, $</label>
+          <input class="input tabular" value="440">
+          <div class="hint">осталось $70 — клиент откроет после готовности</div>
+        </div>
+
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <label class="label">Формат</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item on">Видео</button>
+            <button class="segmented-item">Фото</button>
+          </div>
+          <div class="side-row" style="margin-top:.5rem">
+            <div>
+              <label class="label">Длительность, мин</label>
+              <input class="input tabular" value="30">
+            </div>
+            <div>
+              <label class="label req">Дедлайн</label>
+              <input class="input tabular" type="date" value="2026-05-22">
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== U2: PAY NOTE ====================== -->
+  <section class="variant" id="u2">
+    <div class="variant-head">
+      <div class="v-num">U2</div>
+      <div class="v-title">Custom: свободная заметка к оплате под пресетами — для «100$ sub + 125$ tips» и подобных.</div>
+    </div>
+    <p class="variant-note">
+      <b>Что меняется:</b>
+      <ul>
+        <li><b>«Заметка по оплате»</b> — одна строка под суммой. Покрывает кейсы которые не ложатся в enum Full/Unlock:
+          <span class="chip chip-new">100$ subscribe</span>
+          <span class="chip chip-new">100$ sub + 125$ tips</span>
+          <span class="chip chip-new">2 мин бесплатно за сабку</span>
+        </li>
+        <li>Под полем — chip-подсказки с типичными формулировками из чата (по клику вставляются).</li>
+        <li>Без миграции: text-колонка <code>payment_note</code> nullable.</li>
+        <li><b>Альтернатива:</b> не добавлять вообще — уже есть «Заметки» секция в основной области. Но логически оплата ближе к payment-блоку.</li>
+      </ul>
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <h2 style="margin-bottom:.7rem">Custom ТЗ</h2>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">🎥</span>
+            <span class="lbl">Описание задания</span>
+            <span class="opt">опционально</span>
+          </div>
+          <textarea class="textarea lg">Покрутиться перед камерой, показать с разных сторон. Не забыть показать каблуки. В начале — сказать имя.</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">👗</span>
+            <span class="lbl">Одежда</span>
+          </div>
+          <input class="input" value="—">
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать ТЗ</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Детали</h4>
+          <label class="label">Платформа</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item on">Fansly</button>
+            <button class="segmented-item">OF</button>
+            <button class="segmented-item">Other</button>
+          </div>
+          <label class="label req" style="margin-top:.5rem">Ник / ссылка</label>
+          <input class="input" value="user863848546158272512">
+          <label class="label" style="margin-top:.5rem">Имя для обращения</label>
+          <input class="input" value="">
+        </div>
+
+        <div class="side-section">
+          <h4>Оплата</h4>
+          <div class="side-row">
+            <div>
+              <label class="label">Модель</label>
+              <div class="segmented segmented-sm">
+                <button class="segmented-item on">Full</button>
+                <button class="segmented-item">Unlock</button>
+              </div>
+            </div>
+            <div>
+              <label class="label req">Сумма, $</label>
+              <input class="input tabular" value="225">
+            </div>
+          </div>
+
+          <label class="label" style="margin-top:.5rem">Статус оплаты</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item on">100%</button>
+            <button class="segmented-item">50/50</button>
+            <button class="segmented-item">75/25</button>
+            <button class="segmented-item">Своя</button>
+          </div>
+
+          <div class="pay-note-row is-new" style="margin-top:.9rem">
+            <label class="label">Заметка по оплате</label>
+            <input class="input" placeholder="например: 100$ sub + 125$ tips" value="100$ sub + 125$ tips">
+            <div class="pay-note-hints">
+              <button class="pay-note-hint">+ subscribe</button>
+              <button class="pay-note-hint">+ tips</button>
+              <button class="pay-note-hint">+ unlock</button>
+              <button class="pay-note-hint">+ за сабку</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <label class="label">Формат</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item on">Видео</button>
+            <button class="segmented-item">Фото</button>
+          </div>
+          <div class="side-row" style="margin-top:.5rem">
+            <div>
+              <label class="label">Длительность, мин</label>
+              <input class="input tabular" value="10-12">
+            </div>
+            <div>
+              <label class="label req">Дедлайн</label>
+              <input class="input tabular" type="date" value="2026-05-25">
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== ALL TOGETHER ====================== -->
+  <section class="variant" id="all">
+    <div class="variant-head">
+      <div class="v-num">∑</div>
+      <div class="v-title">Финальный вид с C1+C2 для контента (Photo set, 2 сета) и U1+U2 для custom.</div>
+    </div>
+    <p class="variant-note">
+      Сборка всех предложенных изменений в одном экране. Здесь видно, как они складываются вместе и не конфликтуют. Слева — контент-задача с гайдом, нумерованными референсами и двумя дедлайнами. Справа — превью карточки в фиде.
+    </p>
+
+    <div class="form-grid">
+      <div class="form-main">
+        <div class="preset-badge">📦 пресет · photo set</div>
+        <input class="title-input-serif" value="Photo set · нед. 27 мая">
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">Шаблон</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-btn">PPV-бандл</button>
+            <button class="preset-btn on">Photo set</button>
+            <button class="preset-btn">Life-photo</button>
+            <button class="preset-btn">SFW / Reddit</button>
+            <button class="preset-btn">FYP</button>
+            <button class="preset-btn">Chat pack</button>
+            <button class="preset-btn"><span class="new-dot"></span>Instagram</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="lbl">ТЗ / примечания</span>
+            <span class="req">обязательно</span>
+            <a class="guide-link" href="#">📖 Гайд по Photo set ↗</a>
+          </div>
+          <textarea class="textarea lg">Съёмка двух фотосетов (тизер + платный нюд). Любая идея из гайда или своя.</textarea>
+        </div>
+
+        <div class="block">
+          <div class="block-head">
+            <span class="icon">📎</span>
+            <span class="lbl">Вложения и референсы</span>
+            <span class="opt">2/10</span>
+          </div>
+          <div class="refs-grid">
+            <div class="ref-row">
+              <span class="ref-handle">⋮⋮</span>
+              <span class="ref-num">1</span>
+              <div class="ref-body">
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="ref-thumb" style="background-image:linear-gradient(135deg,#d2bca8,#a89c89)"></div>
+                  <div style="flex:1;min-width:0">
+                    <input class="ref-caption" value="Сет 1: образ в шёлке, лежа на кровати">
+                    <div class="ref-url">moodboard_silk.jpg</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm">×</button>
+            </div>
+            <div class="ref-row">
+              <span class="ref-handle">⋮⋮</span>
+              <span class="ref-num">2</span>
+              <div class="ref-body">
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="ref-thumb" style="background-image:linear-gradient(135deg,#c8a896,#967e6c)"></div>
+                  <div style="flex:1;min-width:0">
+                    <input class="ref-caption" value="Сет 2: душ + полотенце, ванная">
+                    <div class="ref-url">moodboard_bath.jpg</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm">×</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.4rem">
+            <button class="btn btn-sm">+ Ссылка</button>
+            <button class="btn btn-sm">+ Картинки</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-primary">Создать задачу</button>
+          <a class="back-link" href="#">Отмена</a>
+        </div>
+      </div>
+
+      <aside class="form-side">
+        <div class="side-section">
+          <h4>Категория</h4>
+          <select class="select"><option>Sets</option></select>
+        </div>
+        <div class="side-section">
+          <h4>Объём <span class="chip">на каждый сет</span></h4>
+          <label class="label">Фото</label>
+          <input class="input tabular" value="5-15">
+        </div>
+        <div class="side-section">
+          <h4>Тайминг</h4>
+          <div class="dual-deadline">
+            <div class="leg">
+              <div class="leg-num"><span class="dot"></span>Сет 1</div>
+              <input type="date" value="2026-05-27">
+            </div>
+            <div class="leg">
+              <div class="leg-num"><span class="dot" style="background:var(--color-state-amber)"></span>Сет 2</div>
+              <input type="date" value="2026-06-03">
+            </div>
+          </div>
+          <label class="label" style="margin-top:.7rem">Приоритет</label>
+          <div class="segmented segmented-sm">
+            <button class="segmented-item">Высокий</button>
+            <button class="segmented-item on">Средний</button>
+            <button class="segmented-item">Низкий</button>
+          </div>
+        </div>
+
+        <div class="side-section">
+          <h4>Превью в фиде</h4>
+          <div class="preview-card">
+            <div class="pc-head">
+              <span>Photo set · нед. 27 мая</span>
+              <span class="chip chip-amber">2 этапа</span>
+            </div>
+            <div class="pc-meta">
+              <span>📷 Sets</span>
+              <span>· до 27 мая</span>
+              <span>· затем 3 июня</span>
+            </div>
+            <div class="pc-text">
+              Съёмка двух фотосетов (тизер + платный нюд). Любая идея из гайда или своя…
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================== SUMMARY TABLE ====================== -->
+  <div class="summary">
+    <h2>Сводка — что внутри и сколько стоит</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Изменение</th>
+          <th class="e-prio">Приоритет</th>
+          <th class="e-cost">Сложность</th>
+          <th>Требует</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>C1a</td>
+          <td>Гайд-линк в пресете (Notion URL зашит в <code>CONTENT_TASK_PRESETS</code>)</td>
+          <td>⚡ высокий</td>
+          <td>низкая</td>
+          <td>2 строки в типе пресета, рендер в форме и в карточке задачи</td>
+        </tr>
+        <tr>
+          <td>C1b</td>
+          <td>Нумерация вложений + drag-to-reorder</td>
+          <td>высокий</td>
+          <td>средняя</td>
+          <td>уже есть <code>sort_order</code> в схеме — нужен только UI</td>
+        </tr>
+        <tr>
+          <td>C1c</td>
+          <td>Пресет Instagram (новый шаблон в массиве)</td>
+          <td>низкий</td>
+          <td>низкая</td>
+          <td>1 объект в <code>CONTENT_TASK_PRESETS</code></td>
+        </tr>
+        <tr>
+          <td>C2</td>
+          <td>Сдвоенные дедлайны для PPV / Photo set</td>
+          <td>⚡ высокий</td>
+          <td>высокая</td>
+          <td>миграция (<code>deadline_on_2</code> или <code>milestones</code>), правки фида/карточки/индексов</td>
+        </tr>
+        <tr>
+          <td>C3</td>
+          <td>Структурные подполя Life-photo (без миграции, конкатенация)</td>
+          <td>средний</td>
+          <td>средняя</td>
+          <td>условный рендер по пресету; помнить про откат <code>shot_list</code> в 0013</td>
+        </tr>
+        <tr>
+          <td>—</td>
+          <td>Скрывать «Объём» для не-PPV/Photo set пресетов</td>
+          <td>средний</td>
+          <td>низкая</td>
+          <td>5 строк в сайдбаре</td>
+        </tr>
+        <tr>
+          <td>U1a</td>
+          <td>Автоподсказка по <code>buyer_handle</code> (последние 10 уникальных)</td>
+          <td>⚡ высокий</td>
+          <td>низкая</td>
+          <td>server action + HTML <code>&lt;datalist&gt;</code></td>
+        </tr>
+        <tr>
+          <td>U1b</td>
+          <td>Поле «Имя для обращения в кадре»</td>
+          <td>средний</td>
+          <td>низкая</td>
+          <td>переименовать placeholder у <code>buyerDisplayName</code>; либо новая колонка <code>fan_name</code></td>
+        </tr>
+        <tr>
+          <td>U2</td>
+          <td>Свободная «Заметка по оплате»</td>
+          <td>средний</td>
+          <td>низкая</td>
+          <td>колонка <code>payment_note</code> nullable</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small" style="margin-top:.8rem">
+      «⚡ высокий» — даёт заметный выигрыш на каждой задаче. C1a / U1a — почти бесплатные, делать в первую очередь.
+    </p>
+  </div>
+
+</div>
+
+<script>
+const switcher = document.querySelector('.switcher-inner');
+const variants = document.querySelectorAll('.variant');
+switcher.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-v]');
+  if (!btn) return;
+  switcher.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  const id = btn.dataset.v;
+  variants.forEach(v => v.classList.toggle('active', v.id === id));
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+</script>
+</body>
+</html>

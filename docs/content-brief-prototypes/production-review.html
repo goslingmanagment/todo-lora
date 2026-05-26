@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Проверка и продакшн · todo-lora</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <div class="brand">
+          <strong>todo-lora</strong>
+          <span>проверка выдачи и блокеров</span>
+        </div>
+        <nav class="nav" aria-label="Прототипы">
+          <a href="./index.html">Обзор</a>
+          <a href="./form-v2.html">Форма v2</a>
+          <a href="./telegram-import.html">Импорт</a>
+          <a href="./production-review.html" aria-current="page">Проверка</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="shell review-layout">
+        <section class="panel" aria-labelledby="task-title">
+          <p class="eyebrow">Content · PPV</p>
+          <h1 id="task-title">PPV-бандл: майский выпуск</h1>
+          <p class="lead">
+            Экран после создания задачи. Основная идея: не терять важные уточнения в комментариях,
+            а поднимать их в статусы, чеклист приемки и историю изменений ТЗ.
+          </p>
+
+          <div class="production-strip" aria-label="Продакшн статус">
+            <div class="production-step">План</div>
+            <div class="production-step active">Снято</div>
+            <div class="production-step">Монтаж</div>
+            <div class="production-step">Готово</div>
+            <div class="production-step">Опубликовано</div>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>Чеклист приемки</h2>
+                <p>Чеклист строится из формы, а не вручную из свободного текста.</p>
+              </div>
+              <span class="status-pill warn">5 / 7</span>
+            </div>
+
+            <div class="checklist">
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check done"></span>
+                  <div>
+                    <strong>Тизерные фото</strong>
+                    <span>10-15 кадров, есть крупные и общие планы</span>
+                  </div>
+                </div>
+                <span class="status-pill ok">принято</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check done"></span>
+                  <div>
+                    <strong>Короткое видео 1</strong>
+                    <span>вертикальный формат, 7:42</span>
+                  </div>
+                </div>
+                <span class="status-pill ok">принято</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check done"></span>
+                  <div>
+                    <strong>Короткое видео 2</strong>
+                    <span>вертикальный формат, 8:15</span>
+                  </div>
+                </div>
+                <span class="status-pill ok">принято</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check"></span>
+                  <div>
+                    <strong>Обложка / первый кадр</strong>
+                    <span>нужно выбрать лучший кадр после загрузки</span>
+                  </div>
+                </div>
+                <span class="status-pill warn">ожидает</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check"></span>
+                  <div>
+                    <strong>Формат загрузки</strong>
+                    <span>видео грузится только после конвертации</span>
+                  </div>
+                </div>
+                <span class="status-pill danger">блокер</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>ТЗ для сверки</h2>
+                <p>Короткая структурированная версия вместо длинного Telegram-треда.</p>
+              </div>
+            </div>
+            <div class="field-grid">
+              <div class="parsed-field">
+                <strong>Выдача</strong>
+                <span>10-15 фото · 2 видео · 5-10 минут · 9:16</span>
+              </div>
+              <div class="parsed-field">
+                <strong>Каналы</strong>
+                <span>OF PPV, wall teaser</span>
+              </div>
+              <div class="parsed-field">
+                <strong>Образ</strong>
+                <span>темный образ, запасной вариант подтвержден</span>
+              </div>
+              <div class="parsed-field">
+                <strong>Ограничения</strong>
+                <span>без лишних отражений, не снимать слишком близко</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="timeline" aria-labelledby="timeline-title">
+          <h2 id="timeline-title">История и блокеры</h2>
+          <div class="timeline-list">
+            <div class="timeline-item">
+              <div>
+                <strong>ТЗ подтверждено</strong>
+                <span>исполнитель видел финальную версию</span>
+              </div>
+              <span class="status-pill ok">ack</span>
+            </div>
+            <div class="timeline-item">
+              <div>
+                <strong>Изменен формат</strong>
+                <span>добавлена проверка загрузки видео</span>
+              </div>
+              <span class="status-pill warn">правка</span>
+            </div>
+            <div class="timeline-item">
+              <div>
+                <strong>Материал загружен</strong>
+                <span>папка: SMM / PPV / May</span>
+              </div>
+              <span class="status-pill ok">done</span>
+            </div>
+            <div class="timeline-item">
+              <div>
+                <strong>Нужна конвертация</strong>
+                <span>исходный формат не принимается площадкой</span>
+              </div>
+              <span class="status-pill danger">block</span>
+            </div>
+          </div>
+
+          <div class="side-group" style="margin-top: 18px">
+            <h3>Быстрые действия</h3>
+            <div class="chips">
+              <button type="button">Запросить правку</button>
+              <button type="button">Отметить готово</button>
+              <button class="button-secondary" type="button">Создать задачу на монтаж</button>
+            </div>
+          </div>
+
+          <div class="side-group">
+            <h3>Что это решает</h3>
+            <p class="hint">
+              Статусы “снято” и “готово” становятся проверяемыми: видно, чего не хватает, кто
+              подтвердил правки и почему задача не может уйти дальше.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </body>
+</html>

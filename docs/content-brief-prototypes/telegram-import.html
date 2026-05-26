@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Импорт из Telegram · todo-lora</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <div class="brand">
+          <strong>todo-lora</strong>
+          <span>импорт старого формата</span>
+        </div>
+        <nav class="nav" aria-label="Прототипы">
+          <a href="./index.html">Обзор</a>
+          <a href="./form-v2.html">Форма v2</a>
+          <a href="./telegram-import.html" aria-current="page">Импорт</a>
+          <a href="./production-review.html">Проверка</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="shell import-layout">
+        <section class="panel" aria-labelledby="import-title">
+          <p class="eyebrow">Telegram parser</p>
+          <h1 id="import-title">Вставка старого ТЗ</h1>
+          <p class="lead">
+            Этот экран нужен, чтобы не заставлять менеджера сразу заполнять новую форму. Он вставляет
+            привычный текст из Telegram, раскладывает поля и подсвечивает риски до создания задачи.
+          </p>
+
+          <div class="block" style="margin-top: 20px">
+            <label for="telegram-text">Сообщение из Telegram</label>
+            <textarea id="telegram-text" class="paste-box">📦 Описание заказа
+Дата: 01.05.2026
+Покупатель: https://fansly.com/example/posts
+Имя: Alex
+Оплата: $220, $110 оплачено, остальное после готовности
+Длительность: 8-10 минут
+
+🎥 Описание задания:
+Снять спокойное видео в домашнем формате. Начать с общего плана, затем перейти к деталям образа и нескольким ракурсам. В начале сказать имя фана.
+
+👗 Одежда:
+Черный образ, каблуки, запасной вариант если основного образа нет.
+
+🗒 Заметки:
+Без музыки. Проверить формат файла перед загрузкой. Референсы ниже.
+
+🔥 Срочность: средняя
+⏳ Сроки: до 08.05.2026</textarea>
+            <div class="footer-actions">
+              <button class="button-secondary" type="button">Разобрать ТЗ</button>
+              <button class="button-plain" type="button">Очистить</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="import-preview" aria-labelledby="parsed-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Parsed brief</p>
+              <h2 id="parsed-title">Предпросмотр новой задачи</h2>
+            </div>
+            <span class="status-pill warn">2 проверки</span>
+          </div>
+
+          <div class="parsed-grid">
+            <div class="parsed-field">
+              <strong>Тип</strong>
+              <span>Custom · видео</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Платформа</strong>
+              <span>Fansly</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Покупатель</strong>
+              <span>example</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Имя фана</strong>
+              <span>Alex</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Оплата</strong>
+              <span>$220 · получено $110 · unlock</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Длительность</strong>
+              <span>8-10 минут</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Дата заказа</strong>
+              <span>01.05.2026</span>
+            </div>
+            <div class="parsed-field">
+              <strong>Дедлайн</strong>
+              <span>08.05.2026</span>
+            </div>
+          </div>
+
+          <div class="warning-box">
+            <strong>Проверка перед созданием</strong>
+            <p style="margin-top: 8px">
+              В ТЗ есть “референсы ниже”, но вложения еще не добавлены. Также найдено условие
+              “проверить формат файла” — задача должна стартовать со статусом “нужна проверка
+              загрузки”, а не “готово к съемке”.
+            </p>
+          </div>
+
+          <div class="block" style="margin-top: 20px">
+            <div class="field-grid">
+              <div class="field">
+                <label for="parsed-brief">Описание задания</label>
+                <textarea id="parsed-brief">Снять спокойное видео в домашнем формате. Начать с общего плана, затем перейти к деталям образа и нескольким ракурсам. В начале сказать имя фана.</textarea>
+              </div>
+              <div class="field">
+                <label for="parsed-notes">Одежда и заметки</label>
+                <textarea id="parsed-notes">Одежда: черный образ, каблуки, запасной вариант если основного образа нет.
+
+Заметки: без музыки. Проверить формат файла перед загрузкой. Референсы ниже.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-actions">
+            <div class="chips">
+              <span class="chip mint">создать custom</span>
+              <span class="chip">сохранить черновик</span>
+            </div>
+            <button class="primary" type="button">Создать из импорта</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

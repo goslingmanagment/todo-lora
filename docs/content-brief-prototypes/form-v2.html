@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Форма контент-ТЗ v2 · todo-lora</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <div class="brand">
+          <strong>todo-lora</strong>
+          <span>форма контент-ТЗ v2</span>
+        </div>
+        <nav class="nav" aria-label="Прототипы">
+          <a href="./index.html">Обзор</a>
+          <a href="./form-v2.html" aria-current="page">Форма v2</a>
+          <a href="./telegram-import.html">Импорт</a>
+          <a href="./production-review.html">Проверка</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="shell form-layout">
+        <section class="panel" aria-labelledby="form-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">New content brief</p>
+              <h1 id="form-title">PPV-бандл: майский выпуск</h1>
+            </div>
+            <button class="button-plain" type="button">Вставить из Telegram</button>
+          </div>
+
+          <div class="block">
+            <div class="field-grid three">
+              <div class="field">
+                <label for="preset">Шаблон</label>
+                <select id="preset">
+                  <option>PPV-бандл</option>
+                  <option>Life-photo</option>
+                  <option>Photo set</option>
+                  <option>Instagram</option>
+                  <option>Reddit / SFW</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="category">Категория</label>
+                <select id="category">
+                  <option>PPV</option>
+                  <option>Sets</option>
+                  <option>Life</option>
+                  <option>Instagram</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="destination">Каналы</label>
+                <input id="destination" value="OF PPV, wall teaser" />
+              </div>
+            </div>
+            <p class="hint">
+              В форме лучше хранить не один destination, а список каналов: в переписке один и тот
+              же материал часто уходит в SMM, Instagram, Reddit или на несколько аккаунтов.
+            </p>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>Выдача</h2>
+                <p>Фиксируем не только минуты, а полный комплект того, что нужно получить.</p>
+              </div>
+            </div>
+            <div class="field-grid four">
+              <div class="field">
+                <label for="photo-count">Фото</label>
+                <input id="photo-count" value="10-15" />
+              </div>
+              <div class="field">
+                <label for="video-count">Видео</label>
+                <input id="video-count" value="2" />
+              </div>
+              <div class="field">
+                <label for="duration">Минут на видео</label>
+                <input id="duration" value="5-10" />
+              </div>
+              <div class="field">
+                <label for="format">Формат</label>
+                <select id="format">
+                  <option>Вертикально 9:16</option>
+                  <option>Горизонтально 16:9</option>
+                  <option>Любой</option>
+                </select>
+              </div>
+            </div>
+            <div class="chips" style="margin-top: 14px" aria-label="Чеклист выдачи">
+              <span class="chip active">тизерные фото</span>
+              <span class="chip active">платный сет</span>
+              <span class="chip active">короткое видео</span>
+              <span class="chip mint">обложка / первый кадр</span>
+              <span class="chip blue">подпись для рассылки</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>Содержание</h2>
+                <p>Textarea остается, но ТЗ разбито на блоки, которые легче проверить.</p>
+              </div>
+            </div>
+            <div class="field-grid">
+              <div class="field-wide">
+                <label for="goal">Цель / контекст</label>
+                <textarea id="goal">Снять комплект для платной рассылки: спокойный домашний вайб, один образ, без сложной локации. Материал должен работать как самостоятельный PPV и как тизер на стену.</textarea>
+              </div>
+              <div class="field">
+                <label for="plot">Сюжет / идея</label>
+                <textarea id="plot">Начало с общего плана, затем несколько смен ракурса. Сохранить ощущение живой съемки, не делать постановку слишком рекламной.</textarea>
+              </div>
+              <div class="field">
+                <label for="must-have">Обязательные кадры</label>
+                <textarea id="must-have">1. Первый кадр для обложки
+2. Детали образа
+3. Крупные и общие планы
+4. Финальный кадр без резкой обрезки</textarea>
+              </div>
+              <div class="field">
+                <label for="look">Одежда / реквизит / локация</label>
+                <textarea id="look">Черный или темный образ, кровать или диван, нейтральный фон. Если образа нет, отметить задачу как “нужна замена”.</textarea>
+              </div>
+              <div class="field">
+                <label for="limits">Ограничения</label>
+                <textarea id="limits">Не использовать бежевую одежду, которая сливается с кожей. Проверить, что в кадре нет лишних людей, зеркальных отражений и случайных предметов.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>Референсы</h2>
+                <p>У каждого референса есть назначение: повторить, взять настроение или избежать.</p>
+              </div>
+              <button type="button">Добавить референс</button>
+            </div>
+            <div class="reference-grid">
+              <article class="reference-tile">
+                <div class="reference-visual" aria-hidden="true"></div>
+                <div class="reference-body">
+                  <span class="mini-pill">повторить ракурс</span>
+                  <p>Сохранить дистанцию камеры, движение сделает монтаж.</p>
+                </div>
+              </article>
+              <article class="reference-tile">
+                <div class="reference-visual" aria-hidden="true"></div>
+                <div class="reference-body">
+                  <span class="mini-pill">взять настроение</span>
+                  <p>Домашний свет, мягкая динамика, без точного копирования.</p>
+                </div>
+              </article>
+              <article class="reference-tile">
+                <div class="reference-visual" aria-hidden="true"></div>
+                <div class="reference-body">
+                  <span class="mini-pill">не повторять</span>
+                  <p>Слишком близкий кроп, монтажу будет сложно стабилизировать.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="section-title">
+              <div>
+                <h2>Готовность к съемке</h2>
+                <p>Отдельный блок ловит большинство вопросов из переписки до дедлайна.</p>
+              </div>
+            </div>
+            <div class="availability">
+              <div class="availability-row">
+                <div>
+                  <strong>Одежда</strong>
+                  <span>темный образ подтвержден, запасной вариант есть</span>
+                </div>
+                <span class="status-pill ok">есть</span>
+              </div>
+              <div class="availability-row">
+                <div>
+                  <strong>Локация</strong>
+                  <span>кровать / диван, без отдельной студии</span>
+                </div>
+                <span class="status-pill ok">доступна</span>
+              </div>
+              <div class="availability-row">
+                <div>
+                  <strong>Формат загрузки</strong>
+                  <span>нужно проверить, принимает ли папка исходный видеоформат</span>
+                </div>
+                <span class="status-pill warn">проверить</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-actions">
+            <div class="chips" aria-label="Статус черновика">
+              <span class="chip active">Черновик</span>
+              <span class="chip">Ждет подтверждения</span>
+              <span class="chip">Готово к съемке</span>
+            </div>
+            <button class="primary" type="button">Создать задачу</button>
+          </div>
+        </section>
+
+        <aside class="side-panel" aria-label="Сводка ТЗ">
+          <div class="side-group">
+            <h3>Сводка</h3>
+            <div class="metric-stack">
+              <div class="metric"><span>Выдача</span><b>10-15 фото · 2 видео</b></div>
+              <div class="metric"><span>Формат</span><b>9:16</b></div>
+              <div class="metric"><span>Дедлайн</span><b>27 мая</b></div>
+              <div class="metric"><span>Приоритет</span><b>средний</b></div>
+            </div>
+          </div>
+          <div class="side-group">
+            <h3>Проверки</h3>
+            <div class="checklist">
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check done"></span>
+                  <div>
+                    <strong>Объем заполнен</strong>
+                    <span>фото, видео и длительность</span>
+                  </div>
+                </div>
+                <span class="status-pill ok">ok</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check done"></span>
+                  <div>
+                    <strong>Референсы подписаны</strong>
+                    <span>3 из 3 с назначением</span>
+                  </div>
+                </div>
+                <span class="status-pill ok">ok</span>
+              </div>
+              <div class="check-item">
+                <div class="check-left">
+                  <span class="fake-check"></span>
+                  <div>
+                    <strong>Формат загрузки</strong>
+                    <span>может понадобиться конвертация</span>
+                  </div>
+                </div>
+                <span class="status-pill warn">risk</span>
+              </div>
+            </div>
+          </div>
+          <div class="side-group">
+            <h3>Что это решает</h3>
+            <p class="hint">
+              Меньше вопросов “актуально?”, “есть ли образ?”, “куда грузить?”, “можно ли в обычном
+              формате?”. Исполнитель видит весь комплект и блокеры до съемки.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </body>
+</html>
