@@ -5,6 +5,7 @@ import { TaskDetail } from './TaskDetail';
 import { getHeaderMetrics } from '@/lib/server/feed';
 import { RealtimeRefresh } from '@/components/RealtimeRefresh';
 import { getTaskDetailData } from '@/lib/server/task-detail';
+import { isCanonicalUuid } from '@/lib/validation/uuid';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
   const auth = await getCurrentAuth();
   if (!auth) redirect('/login');
   const { id } = await params;
-  if (!isUuid(id)) notFound();
+  if (!isCanonicalUuid(id)) notFound();
 
   const [detail, metrics] = await Promise.all([getTaskDetailData(id), getHeaderMetrics()]);
   if (!detail) notFound();
@@ -58,8 +59,4 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
       </main>
     </>
   );
-}
-
-function isUuid(s: string) {
-  return /^[0-9a-f-]{36}$/i.test(s);
 }

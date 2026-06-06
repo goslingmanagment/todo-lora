@@ -593,6 +593,39 @@ describe('agreement state', () => {
     const fresh = await reloadTask(c.data.id);
     expect(fresh.agreementState).toBe('confirmed');
   });
+
+  it('does not write or audit when Custom agreement is unchanged', async () => {
+    const topicId = await getCustomsTopicId();
+    const c = await actions.createTaskAction({
+      type: 'custom',
+      topicId,
+      title: 'agreement noop',
+      priority: 'low',
+      deadlineOn: '2026-05-15',
+      buyerHandle: '@agreement-noop',
+      platform: 'Fansly',
+      paymentModel: 'full',
+      amountDollars: 50,
+      amountCollectedDollars: 0,
+      agreementState: 'pending',
+    });
+    if (!c.ok) throw new Error('create failed');
+    const before = await reloadTask(c.data.id);
+    const beforeEvents = await recentEvents(c.data.id);
+
+    const noop = await actions.setAgreementStateAction({
+      id: c.data.id,
+      agreementState: 'pending',
+      expectedVersion: before.version,
+    });
+
+    expect(noop.ok).toBe(true);
+    const after = await reloadTask(c.data.id);
+    expect(after.version).toBe(before.version);
+    expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+    const afterEvents = await recentEvents(c.data.id);
+    expect(afterEvents).toHaveLength(beforeEvents.length);
+  });
 });
 
 describe('URL attachments', () => {
@@ -1102,6 +1135,27 @@ describe('updateTaskAction', () => {
     expect(after.title).toBe('occ orig');
     expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
     expect(after.version).toBe(before.version);
+    const afterEvents = await recentEvents(r.data.id);
+    expect(afterEvents).toHaveLength(beforeEvents.length);
+  });
+
+  it('does not write or audit when content production status is unchanged', async () => {
+    const topicId = await getContentTopicId();
+    const r = await actions.createTaskAction(stubInput(topicId, 'production noop'));
+    if (!r.ok) throw new Error('create failed');
+    const before = await reloadTask(r.data.id);
+    const beforeEvents = await recentEvents(r.data.id);
+
+    const noop = await actions.updateTaskAction({
+      id: r.data.id,
+      expectedVersion: before.version,
+      contentProductionStatus: before.contentProductionStatus,
+    });
+
+    expect(noop.ok).toBe(true);
+    const after = await reloadTask(r.data.id);
+    expect(after.version).toBe(before.version);
+    expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
     const afterEvents = await recentEvents(r.data.id);
     expect(afterEvents).toHaveLength(beforeEvents.length);
   });

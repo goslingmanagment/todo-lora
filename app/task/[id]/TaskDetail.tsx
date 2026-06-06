@@ -88,6 +88,7 @@ export function TaskDetail({ task, topic, allTopics, users, attachments, events 
   };
 
   const onSetAgreement = (next: AgreementState) => {
+    if (task.agreementState === next) return;
     startTransition(async () => {
       const res = await setAgreementStateAction({
         id: task.id,
@@ -106,6 +107,7 @@ export function TaskDetail({ task, topic, allTopics, users, attachments, events 
   };
 
   const onSetProductionStatus = (next: ContentProductionStatus) => {
+    if ((task.contentProductionStatus ?? 'planned') === next) return;
     startTransition(async () => {
       const res = await updateTaskAction({
         id: task.id,
@@ -258,7 +260,7 @@ export function TaskDetail({ task, topic, allTopics, users, attachments, events 
                   className="segmented-item"
                   aria-checked={task.agreementState === s}
                   onClick={() => onSetAgreement(s)}
-                  disabled={isPending}
+                  disabled={isPending || task.agreementState === s}
                 >
                   {AGREEMENT_LABELS_RU[s]}
                 </button>
@@ -392,7 +394,7 @@ function ContentWorkflowPanel({
               className="segmented-item"
               aria-checked={productionStatus === status}
               onClick={() => onSetProductionStatus(status)}
-              disabled={isPending}
+              disabled={isPending || productionStatus === status}
             >
               {CONTENT_PRODUCTION_LABELS_RU[status]}
             </button>

@@ -6,6 +6,7 @@
  * team needs additional auth methods. For now the code-based login is direct.
  */
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
+import { isIP } from 'node:net';
 import { cookies, headers } from 'next/headers';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
@@ -14,6 +15,8 @@ import { getConfig } from '@/lib/env';
 import { COOKIE_NAME, SESSION_TTL_MS, sessionCookieOptions } from './cookie-config';
 
 const SESSION_REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
+
+type HeaderGetter = Pick<Headers, 'get'>;
 
 export type SessionUser = Pick<User, 'id' | 'displayName' | 'name' | 'email' | 'disabledAt'>;
 
@@ -145,9 +148,16 @@ export async function invalidateAllSessionsFor(userId: string): Promise<void> {
 
 export async function getRequestIp(): Promise<string> {
   const h = await headers();
-  const fwd = h.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0]!.trim();
-  return h.get('x-real-ip') ?? 'local';
+  return deriveRequestIp(h);
+}
+
+export function deriveRequestIp(h: HeaderGetter): string {
+  const realIp = h.get('x-real-ip')?.trim();
+  if (realIp && isIP(realIp)) return realIp;
+
+  // Do not use X-Forwarded-For for rate limiting here: without an explicitly
+  // trusted edge proxy, clients can choose the leading value themselves.
+  return 'local';
 }
 
 export class AuthRequiredError extends Error {

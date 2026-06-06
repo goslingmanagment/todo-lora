@@ -278,7 +278,7 @@ describe('triggers', () => {
 });
 
 describe('migration compatibility', () => {
-  it('adopts existing baseline schema instead of replaying 0001_init', async () => {
+  it('refuses unsafe adoption for a fully migrated schema without history', async () => {
     await getPool().query(`
       DROP TABLE IF EXISTS __drizzle_migrations;
       CREATE TABLE __drizzle_migrations (
@@ -293,7 +293,9 @@ describe('migration compatibility', () => {
     const client = await getPool().connect();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
-      await adoptExistingBaseline(client, applied);
+      await expect(adoptExistingBaseline(client, applied)).rejects.toThrow(
+        /refusing unsafe baseline adoption/,
+      );
     } finally {
       logSpy.mockRestore();
       client.release();
@@ -302,7 +304,7 @@ describe('migration compatibility', () => {
     const { rows } = await getPool().query<{ tag: string }>(
       `SELECT tag FROM __drizzle_migrations WHERE tag = '0001_init'`,
     );
-    expect(applied.has('0001_init')).toBe(true);
-    expect(rows).toHaveLength(1);
+    expect(applied.has('0001_init')).toBe(false);
+    expect(rows).toHaveLength(0);
   });
 });

@@ -31,7 +31,7 @@ export async function getTaskDetailData(id: string) {
   const attachmentsWithPreview = await Promise.all(
     atts.map(async (a) => ({
       ...a,
-      previewUrl: a.kind === 'image' && a.objectKey ? await presignDownload(a.objectKey) : null,
+      previewUrl: await getAttachmentPreviewUrl(a.kind, a.objectKey),
     })),
   );
 
@@ -43,4 +43,16 @@ export async function getTaskDetailData(id: string) {
     attachments: attachmentsWithPreview,
     events,
   };
+}
+
+async function getAttachmentPreviewUrl(
+  kind: string,
+  objectKey: string | null,
+): Promise<string | null> {
+  if (kind !== 'image' || !objectKey) return null;
+  try {
+    return await presignDownload(objectKey);
+  } catch {
+    return null;
+  }
 }

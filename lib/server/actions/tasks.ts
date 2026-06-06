@@ -204,6 +204,14 @@ export async function updateTaskAction(input: unknown): Promise<ActionResult<{ i
       };
     }
   }
+  if (
+    existing.type === 'content_task' &&
+    v.contentProductionStatus !== undefined &&
+    v.contentProductionStatus === existing.contentProductionStatus &&
+    isOnlyContentProductionStatusUpdate(v)
+  ) {
+    return { ok: true, data: { id: v.id } };
+  }
 
   const patch: Partial<typeof tasks.$inferInsert> = {
     lastEditedBy: auth.user.id,
@@ -358,6 +366,9 @@ export async function setAgreementStateAction(
   if (existing.type !== 'custom') {
     return { ok: false, error: 'Только для Custom' };
   }
+  if (existing.agreementState === agreementState) {
+    return { ok: true, data: { id } };
+  }
 
   const updated = await db.transaction(async (tx) => {
     const result = await tx
@@ -392,6 +403,12 @@ export async function setAgreementStateAction(
   revalidatePath('/');
   revalidatePath(`/task/${id}`);
   return { ok: true, data: { id } };
+}
+
+function isOnlyContentProductionStatusUpdate(v: object) {
+  return Object.keys(v).every(
+    (key) => key === 'id' || key === 'expectedVersion' || key === 'contentProductionStatus',
+  );
 }
 
 export async function deleteTaskAction(input: unknown): Promise<ActionResult<{ id: string }>> {
